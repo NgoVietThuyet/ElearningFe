@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { ArrowRight, BookOpen, Users, Award, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const courses = [
@@ -36,6 +37,13 @@ export default function Home() {
       avatar: "👨‍🏫",
     },
   ];
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+  }, []);
 
   return (
     <div className="bg-white">
@@ -155,20 +163,22 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-br from-orange-600 to-orange-700 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold mb-4">Sẵn sàng bắt đầu hành trình khám phá?</h2>
-          <p className="text-xl mb-8 text-orange-100">
-            Tham gia cùng hàng nghìn học viên đang học tập trên nền tảng
-          </p>
-          <Link
-            to="/signup"
-            className="inline-flex items-center gap-2 px-8 py-3 bg-white text-orange-600 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            Đăng ký ngay <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-      </section>
+      {!isLoggedIn && (
+        <section className="py-16 bg-gradient-to-br from-orange-600 to-orange-700 text-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl font-bold mb-4">Sẵn sàng bắt đầu hành trình khám phá?</h2>
+            <p className="text-xl mb-8 text-orange-100">
+              Tham gia cùng hàng nghìn học viên đang học tập trên nền tảng
+            </p>
+            <Link
+              to="/signup"
+              className="inline-flex items-center gap-2 px-8 py-3 bg-white text-orange-600 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Đăng ký ngay <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

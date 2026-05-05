@@ -6,6 +6,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import LessonDetail from "./pages/LessonDetail";
+import Courses from "./pages/Courses";
+import News from "./pages/News";
+import Feedback from "./pages/Feedback";
 import Layout from "./components/Layout";
 
 export const router = createBrowserRouter([
@@ -20,6 +23,9 @@ export const router = createBrowserRouter([
       { path: "teacher", Component: TeacherDashboard },
       { path: "student", Component: StudentDashboard },
       { path: "lesson/:id", Component: LessonDetail },
+      { path: "courses", Component: Courses },
+      { path: "news", Component: News },
+      { path: "feedback", Component: Feedback },
     ],
   },
 ]);

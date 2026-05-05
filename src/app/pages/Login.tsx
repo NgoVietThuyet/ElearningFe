@@ -1,24 +1,61 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Microscope } from "lucide-react";
+import { Microscope, Loader2, Eye, EyeOff } from "lucide-react";
+import { authService } from "../api/authService";
+import { toast } from "sonner";
+import { jwtDecode } from "jwt-decode";
+
+interface JwtPayload {
+  role: string;
+  [key: string]: any;
+}
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const navigate = useNavigate();
-
-  const handleSubmit = (e: React.FormEvent) => {
+  // ... (handleSubmit logic remains the same)
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock authentication - in real app, this would call an API
-    if (email && password) {
-      // Determine role based on email for demo purposes
-      if (email.includes("admin")) {
-        navigate("/admin");
-      } else if (email.includes("teacher")) {
-        navigate("/teacher");
-      } else {
+    setIsLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const response = await authService.login({ email, password });
+
+      // Store token
+      localStorage.setItem("token", response.token);
+
+      toast.success(response.message || "Đăng nhập thành công!");
+
+      // Decode token to get role
+      try {
+        const decoded = jwtDecode<JwtPayload>(response.token);
+        // The claim type in .NET is usually a full URI but sometimes just 'role' depending on how it's serialized
+        // In our AuthService.cs it was ClaimTypes.Role which often becomes "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+        const role = decoded.role || decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+
+        if (role === "ADMIN") {
+          navigate("/admin");
+        } else if (role === "TEACHER") {
+          navigate("/teacher");
+        } else {
+          navigate("/");
+        }
+      } catch (decodeError) {
+        console.error("Failed to decode token:", decodeError);
+        // Fallback to student dashboard if decoding fails but login was successful
         navigate("/student");
       }
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại.";
+      setErrorMsg(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -43,10 +80,14 @@ export default function Login() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errorMsg) setErrorMsg(null);
+                }}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all"
                 placeholder="your@email.com"
+                disabled={isLoading}
               />
             </div>
 
@@ -54,15 +95,28 @@ export default function Login() {
               <label htmlFor="password" className="block text-sm text-gray-700 mb-2">
                 Mật khẩu
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all"
+                  placeholder="••••••••"
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between">
@@ -70,16 +124,22 @@ export default function Login() {
                 <input type="checkbox" className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
                 <span className="ml-2 text-sm text-gray-600">Ghi nhớ đăng nhập</span>
               </label>
-              <a href="#" className="text-sm text-orange-600 hover:text-orange-700">
-                Quên mật khẩu?
-              </a>
+
             </div>
+
+            {errorMsg && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                {errorMsg}
+              </div>
+            )}
 
             <button
               type="submit"
-              className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 transition-colors"
+              disabled={isLoading}
+              className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
             >
-              Đăng nhập
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isLoading ? "Đang xử lý..." : "Đăng nhập"}
             </button>
           </form>
 
@@ -89,12 +149,6 @@ export default function Login() {
               <Link to="/signup" className="text-orange-600 hover:text-orange-700 font-medium">
                 Đăng ký ngay
               </Link>
-            </p>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-xs text-gray-500 text-center">
-              Demo: admin@test.com, teacher@test.com, student@test.com
             </p>
           </div>
         </div>
