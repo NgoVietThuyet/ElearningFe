@@ -1,9 +1,10 @@
 import axios from "axios";
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "https://elearningbe-nq9w.onrender.com";
+
 // Public API client — no JWT token needed, used for public-facing pages
 const publicClient = axios.create({
-  baseURL: "http://localhost:5081",
-  // baseURL: "https://elearningbe-nq9w.onrender.com",
+  baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 
