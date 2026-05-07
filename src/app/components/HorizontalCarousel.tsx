@@ -38,32 +38,29 @@ export default function HorizontalCarousel({ children, itemWidth = 300 }: Horizo
 
   return (
     <div className="relative">
-      {/* Left Arrow */}
       {canScrollLeft && (
         <button
           type="button"
           onClick={() => scroll("left")}
-          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white shadow-lg rounded-full flex items-center justify-center text-gray-600 hover:text-orange-600 hover:shadow-orange-100 transition-all border border-gray-100"
+          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5 z-10 w-11 h-11 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.12)] rounded-full flex items-center justify-center text-gray-500 hover:text-orange-600 hover:shadow-[0_4px_20px_rgba(249,115,22,0.25)] transition-all duration-200 border border-gray-100 hover:border-orange-200 hover:scale-110"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
       )}
 
-      {/* Scrollable Track */}
       <div
         ref={scrollRef}
-        className="flex gap-6 overflow-x-auto scroll-smooth pb-3"
+        className="flex gap-5 overflow-x-auto scroll-smooth pb-4"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {children}
       </div>
 
-      {/* Right Arrow */}
       {canScrollRight && children.length > 4 && (
         <button
           type="button"
           onClick={() => scroll("right")}
-          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white shadow-lg rounded-full flex items-center justify-center text-gray-600 hover:text-orange-600 hover:shadow-orange-100 transition-all border border-gray-100"
+          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-5 z-10 w-11 h-11 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.12)] rounded-full flex items-center justify-center text-gray-500 hover:text-orange-600 hover:shadow-[0_4px_20px_rgba(249,115,22,0.25)] transition-all duration-200 border border-gray-100 hover:border-orange-200 hover:scale-110"
         >
           <ChevronRight className="w-5 h-5" />
         </button>

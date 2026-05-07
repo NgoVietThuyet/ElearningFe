@@ -292,6 +292,31 @@ export default function AdminDashboard() {
 
   const renderDashboard = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Hero banner */}
+      <div className="relative bg-gradient-to-br from-orange-500 via-orange-600 to-amber-400 rounded-3xl p-8 text-white overflow-hidden shadow-[0_20px_60px_rgba(249,115,22,0.3)]">
+        <img
+          src="/assets/dna.gif"
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: "absolute", left: "50%", top: "50%",
+            translate: "-50% -50%", width: "640px",
+            transform: "rotate(-60deg)", opacity: 0.11,
+            filter: "blur(0.5px) saturate(0.7)",
+            pointerEvents: "none", userSelect: "none",
+          }}
+        />
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-white rounded-full filter blur-[60px]" />
+          <div className="absolute bottom-0 left-1/4 w-36 h-36 bg-yellow-300 rounded-full filter blur-[50px]" />
+        </div>
+        <div className="relative">
+          <p className="text-orange-200 text-sm font-bold uppercase tracking-widest mb-1">Bảng điều khiển</p>
+          <h2 className="text-3xl font-black drop-shadow-sm">Tổng quan hệ thống 🛡️</h2>
+          <p className="text-orange-100 mt-2 font-medium">Quản lý toàn bộ nền tảng EduSmart — người dùng, khóa học, tin tức.</p>
+        </div>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (

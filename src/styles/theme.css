@@ -18,11 +18,11 @@
   --accent-foreground: #030213;
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
+  --border: rgba(0, 0, 0, 0.08);
   --input: transparent;
-  --input-background: #f3f3f5;
+  --input-background: #f8f8fa;
   --switch-background: #cbced4;
-  --font-weight-medium: 500;
+  --font-weight-medium: 600;
   --font-weight-normal: 400;
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
@@ -61,7 +61,7 @@
   --border: oklch(0.269 0 0);
   --input: oklch(0.269 0 0);
   --ring: oklch(0.439 0 0);
-  --font-weight-medium: 500;
+  --font-weight-medium: 600;
   --font-weight-normal: 400;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
@@ -126,56 +126,59 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
 
   html {
     font-size: var(--font-size);
+    scroll-behavior: smooth;
   }
 
   h1 {
     font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 
   h2 {
     font-size: var(--text-xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
   }
 
   h3 {
     font-size: var(--text-lg);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 700;
+    line-height: 1.4;
   }
 
   h4 {
     font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
+    font-weight: 600;
     line-height: 1.5;
   }
 
   label {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
+    font-size: var(--text-sm);
+    font-weight: 600;
     line-height: 1.5;
   }
 
   button {
     font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
+    font-weight: 700;
     line-height: 1.5;
+    font-family: inherit;
   }
 
   input {
     font-size: var(--text-base);
-    font-weight: var(--font-weight-normal);
+    font-weight: 400;
     line-height: 1.5;
+    font-family: inherit;
   }
 }

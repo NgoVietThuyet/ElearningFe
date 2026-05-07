@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Microscope, Loader as Loader2, Eye, EyeOff } from "lucide-react";
+import { Microscope, Loader2, Eye, EyeOff } from "lucide-react";
 import { authService } from "../api/authService";
 import { toast } from "sonner";
 import { jwtDecode } from "jwt-decode";
@@ -17,7 +17,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const navigate = useNavigate();
-  // ... (handleSubmit logic remains the same)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -25,29 +25,17 @@ export default function Login() {
 
     try {
       const response = await authService.login({ email, password });
-
-      // Store token
       localStorage.setItem("token", response.token);
-
       toast.success(response.message || "Đăng nhập thành công!");
 
-      // Decode token to get role
       try {
         const decoded = jwtDecode<JwtPayload>(response.token);
-        // The claim type in .NET is usually a full URI but sometimes just 'role' depending on how it's serialized
-        // In our AuthService.cs it was ClaimTypes.Role which often becomes "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
         const role = decoded.role || decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-
-        if (role === "ADMIN") {
-          navigate("/admin");
-        } else if (role === "TEACHER") {
-          navigate("/teacher");
-        } else {
-          navigate("/");
-        }
+        if (role === "ADMIN") navigate("/admin");
+        else if (role === "TEACHER") navigate("/teacher");
+        else navigate("/");
       } catch (decodeError) {
         console.error("Failed to decode token:", decodeError);
-        // Fallback to student dashboard if decoding fails but login was successful
         navigate("/student");
       }
     } catch (error: any) {
@@ -60,20 +48,23 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full opacity-20 blur-3xl" style={{ background: "radial-gradient(circle, #f97316, transparent)" }} />
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full opacity-15 blur-3xl" style={{ background: "radial-gradient(circle, #fb923c, transparent)" }} />
-      </div>
-      <div className="max-w-md w-full relative">
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl shadow-orange-100/50 p-8 border border-orange-100/50">
+    <div className="min-h-[calc(100vh-68px)] flex items-center justify-center mesh-bg py-12 px-4 relative overflow-hidden">
+      {/* Decorative blobs */}
+      <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-gradient-to-br from-orange-200 to-amber-200 rounded-full filter blur-[80px] opacity-50 pointer-events-none animate-float-slow" />
+      <div className="absolute bottom-[-5%] left-[-5%] w-80 h-80 bg-gradient-to-br from-violet-200 to-pink-200 rounded-full filter blur-[80px] opacity-40 pointer-events-none animate-float-slow" style={{ animationDelay: "4s" }} />
+
+      <div className="relative max-w-md w-full animate-slide-up">
+        {/* Card */}
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-[0_30px_80px_rgba(0,0,0,0.12)] border border-white/60 p-10">
+          {/* Logo */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-orange-200 transition-transform hover:scale-110 hover:rotate-3 duration-300"
-              style={{ background: "linear-gradient(135deg, #f97316, #dc2626)" }}>
-              <Microscope className="w-9 h-9 text-white" />
+            <div className="w-18 h-18 mx-auto mb-4 relative inline-flex">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center shadow-[0_8px_25px_rgba(249,115,22,0.45)] animate-pulse-glow">
+                <Microscope className="w-9 h-9 text-white" />
+              </div>
             </div>
-            <h2 className="text-3xl font-black text-gray-900">Đăng nhập</h2>
-            <p className="text-gray-500 mt-2 text-sm">Chao mung ban tro lai!</p>
+            <h2 className="text-3xl font-black text-gray-900 tracking-tight">Đăng nhập</h2>
+            <p className="text-gray-500 mt-2 font-medium">Chào mừng bạn trở lại! 👋</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -85,12 +76,9 @@ export default function Login() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errorMsg) setErrorMsg(null);
-                }}
+                onChange={(e) => { setEmail(e.target.value); if (errorMsg) setErrorMsg(null); }}
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition-all bg-gray-50/80 hover:bg-white focus:bg-white text-sm"
+                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 focus:border-orange-400 focus:bg-white outline-none transition-all duration-200 font-medium text-gray-900 placeholder:text-gray-400"
                 placeholder="your@email.com"
                 disabled={isLoading}
               />
@@ -98,19 +86,16 @@ export default function Login() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-2">
-                Mat khau
+                Mật khẩu
               </label>
               <div className="relative">
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
+                  onChange={(e) => { setPassword(e.target.value); if (errorMsg) setErrorMsg(null); }}
                   required
-                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition-all bg-gray-50/80 hover:bg-white focus:bg-white text-sm pr-12"
+                  className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 focus:border-orange-400 focus:bg-white outline-none transition-all duration-200 font-medium text-gray-900 placeholder:text-gray-400 pr-12"
                   placeholder="••••••••"
                   disabled={isLoading}
                 />
@@ -119,45 +104,48 @@ export default function Login() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-orange-500 transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
-                <span className="text-sm text-gray-500">Ghi nho dang nhap</span>
+            <div className="flex items-center">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" className="w-4 h-4 accent-orange-500 rounded" />
+                <span className="text-sm text-gray-500 font-medium group-hover:text-gray-700 transition-colors">Ghi nhớ đăng nhập</span>
               </label>
             </div>
 
             {errorMsg && (
-              <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-sm animate-in fade-in slide-in-from-top-2 duration-300 flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-black shrink-0">!</div>
-                {errorMsg}
+              <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300 flex items-center gap-2">
+                <span>⚠️</span> {errorMsg}
               </div>
             )}
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full text-white py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-orange-200 hover:shadow-xl hover:shadow-orange-300 disabled:opacity-60 disabled:scale-100"
-              style={{ background: "linear-gradient(135deg, #f97316, #dc2626)" }}
+              className="btn-gradient w-full text-white py-4 rounded-xl font-black text-base flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isLoading ? "Dang xu ly..." : "Dang nhap"}
+              {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
+              {isLoading ? "Đang xử lý..." : "Đăng nhập"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
-              Chua co tai khoan?{" "}
-              <Link to="/signup" className="text-orange-500 hover:text-orange-600 font-bold transition-colors">
-                Dang ky ngay
+            <p className="text-sm text-gray-500 font-medium">
+              Chưa có tài khoản?{" "}
+              <Link to="/signup" className="text-orange-600 hover:text-orange-700 font-bold transition-colors hover:underline">
+                Đăng ký ngay →
               </Link>
             </p>
           </div>
         </div>
+
+        {/* Bottom branding */}
+        <p className="text-center text-xs text-gray-400 mt-6 font-medium">
+          EduSmart · Nền tảng học sinh học hàng đầu Việt Nam 🇻🇳
+        </p>
       </div>
     </div>
   );
