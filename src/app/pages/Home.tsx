@@ -45,7 +45,7 @@ export default function Home() {
       try {
         const [coursesRes, newsRes] = await Promise.all([
           publicApi.getCourses(),
-          publicApi.getNews(),
+          publicApi.getNews(40), // Tải nhiều tin tức hơn để cuộn
         ]);
         setCourses(coursesRes.data);
         setNews(newsRes.data);
@@ -183,7 +183,7 @@ export default function Home() {
       </section>
 
       {/* ════════════════════════════════════════
-          Featured Courses
+          Featured Courses (2 Rows Layout)
       ════════════════════════════════════════ */}
       <section className="py-20 bg-gray-50/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -193,7 +193,7 @@ export default function Home() {
                 Danh Mục <span className="gradient-text">Khóa Học</span>
               </h2>
               {courses.length > 0 && (
-                <p className="text-gray-400 mt-2 font-medium">{courses.length} khóa học · Lướt để xem thêm →</p>
+                <p className="text-gray-400 mt-2 font-medium">Hiển thị {courses.length} khóa học mới nhất · Cuộn ngang để xem thêm</p>
               )}
             </div>
             <Link to="/courses" className="hidden md:flex items-center gap-2 px-5 py-2.5 border-2 border-orange-200 text-orange-600 rounded-xl font-bold text-sm hover:bg-orange-50 transition-all">
@@ -208,26 +208,25 @@ export default function Home() {
           ) : courses.length === 0 ? (
             <p className="text-center text-gray-400 py-12 font-medium">Chưa có khóa học nào được đăng tải.</p>
           ) : (
-            <HorizontalCarousel itemWidth={272}>
+            <HorizontalCarousel itemWidth={272} rows={2}>
               {courses.map((course, idx) => (
                 <Link
                   key={course.id}
                   to={`/course/${course.id}`}
                   className="flex-none w-64 bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-[0_20px_50px_rgba(249,115,22,0.15)] hover:-translate-y-2 transition-all duration-300 border border-gray-100 hover:border-orange-200 group cursor-pointer"
                 >
-                  <div className={`h-36 ${courseHeaderClasses[idx % courseHeaderClasses.length]} flex items-center justify-center text-6xl group-hover:scale-105 transition-transform duration-500`}>
+                  <div className={`h-32 ${courseHeaderClasses[idx % courseHeaderClasses.length]} flex items-center justify-center text-5xl group-hover:scale-105 transition-transform duration-500`}>
                     {courseIcons[idx % courseIcons.length]}
                   </div>
-                  <div className="p-5">
-                    <h3 className="font-black text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2 min-h-[3rem] text-base">
+                  <div className="p-4">
+                    <h3 className="font-black text-gray-900 mb-1.5 group-hover:text-orange-600 transition-colors line-clamp-1 text-sm">
                       {course.title}
                     </h3>
-                    <div className="flex items-center gap-3 text-xs text-gray-400 mt-3 font-semibold">
-                      <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-orange-400" /> {course.lessonCount} bài</span>
+                    <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                      <span className="flex items-center gap-1"><BookOpen className="w-3 h-3 text-orange-400" /> {course.lessonCount} bài</span>
                       <span>·</span>
-                      <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-blue-400" /> {course.studentCount}</span>
+                      <span className="flex items-center gap-1"><Users className="w-3 h-3 text-blue-400" /> {course.studentCount}</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1.5 truncate font-medium">{course.creatorName}</p>
                   </div>
                 </Link>
               ))}
@@ -273,7 +272,7 @@ export default function Home() {
       </section>
 
       {/* ════════════════════════════════════════
-          Latest News
+          Latest News (2 Rows Layout)
       ════════════════════════════════════════ */}
       <section className="py-20 bg-gray-50/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -283,7 +282,7 @@ export default function Home() {
                 Tin Tức &amp; <span className="gradient-text">Bài Viết</span>
               </h2>
               {news.length > 0 && (
-                <p className="text-gray-400 mt-2 font-medium">{news.length} bài viết · Lướt để xem thêm →</p>
+                <p className="text-gray-400 mt-2 font-medium">Cập nhật mới nhất · Cuộn ngang để xem tất cả</p>
               )}
             </div>
             <Link to="/news" className="hidden md:flex items-center gap-2 px-5 py-2.5 border-2 border-orange-200 text-orange-600 rounded-xl font-bold text-sm hover:bg-orange-50 transition-all">
@@ -298,29 +297,27 @@ export default function Home() {
           ) : news.length === 0 ? (
             <p className="text-center text-gray-400 py-12 font-medium">Chưa có bài viết nào được đăng tải.</p>
           ) : (
-            <HorizontalCarousel itemWidth={320}>
+            <HorizontalCarousel itemWidth={320} rows={2}>
               {news.map((item) => (
                 <Link
                   key={item.id}
                   to={`/news/${item.id}`}
-                  className="flex-none bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] hover:-translate-y-2 transition-all duration-300 hover:border-orange-200 group cursor-pointer overflow-hidden"
+                  className="flex-none bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:border-orange-200 group cursor-pointer overflow-hidden"
                   style={{ width: "300px" }}
                 >
-                  <div className="h-2 bg-gradient-to-r from-orange-400 to-amber-400" />
-                  <div className="p-6">
-                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-green-600 mb-4">
-                      <Newspaper className="w-5 h-5" />
+                  <div className="p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-green-600">
+                        <Newspaper className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-bold">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>
                     </div>
-                    <h3 className="font-black text-gray-900 mb-3 group-hover:text-orange-600 transition-colors line-clamp-2 min-h-[3.2rem] text-base">
+                    <h3 className="font-black text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-1 text-sm">
                       {item.title}
                     </h3>
-                    <p className="text-gray-500 text-sm mb-4 line-clamp-3 italic leading-relaxed">
+                    <p className="text-gray-500 text-xs line-clamp-2 italic leading-relaxed">
                       "{stripHtml(item.content)}"
                     </p>
-                    <div className="flex items-center justify-between text-xs text-gray-400 pt-4 border-t border-gray-100">
-                      <span className="font-bold text-gray-900">{item.authorName}</span>
-                      <span className="font-medium">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>
-                    </div>
                   </div>
                 </Link>
               ))}

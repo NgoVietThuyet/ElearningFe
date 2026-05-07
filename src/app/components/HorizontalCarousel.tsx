@@ -4,9 +4,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 interface HorizontalCarouselProps {
   children: React.ReactNode[];
   itemWidth?: number;
+  rows?: number;
 }
 
-export default function HorizontalCarousel({ children, itemWidth = 300 }: HorizontalCarouselProps) {
+export default function HorizontalCarousel({ children, itemWidth = 300, rows = 1 }: HorizontalCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -33,11 +34,13 @@ export default function HorizontalCarousel({ children, itemWidth = 300 }: Horizo
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir === "right" ? itemWidth * 4 : -(itemWidth * 4), behavior: "smooth" });
+    // Scroll by roughly 4 items width
+    const scrollAmount = itemWidth * 4;
+    el.scrollBy({ left: dir === "right" ? scrollAmount : -scrollAmount, behavior: "smooth" });
   };
 
   return (
-    <div className="relative">
+    <div className="relative group/carousel">
       {canScrollLeft && (
         <button
           type="button"
@@ -50,13 +53,20 @@ export default function HorizontalCarousel({ children, itemWidth = 300 }: Horizo
 
       <div
         ref={scrollRef}
-        className="flex gap-5 overflow-x-auto scroll-smooth pb-4"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        className={`flex overflow-x-auto scroll-smooth pb-4 no-scrollbar ${rows > 1 ? "grid" : ""}`}
+        style={{ 
+          scrollbarWidth: "none", 
+          msOverflowStyle: "none",
+          display: rows > 1 ? "grid" : "flex",
+          gridTemplateRows: rows > 1 ? `repeat(${rows}, min-content)` : "none",
+          gridAutoFlow: rows > 1 ? "column" : "row",
+          gap: "1.25rem" // 20px
+        }}
       >
         {children}
       </div>
 
-      {canScrollRight && children.length > 4 && (
+      {canScrollRight && children.length > (4 * rows) && (
         <button
           type="button"
           onClick={() => scroll("right")}

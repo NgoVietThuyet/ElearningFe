@@ -52,7 +52,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
       try {
         const [coursesRes, newsRes] = await Promise.all([
           publicApi.getCourses(),
-          publicApi.getNews(),
+          publicApi.getNews(40),
         ]);
         setCourses(coursesRes.data);
         setNews(newsRes.data);
@@ -129,15 +129,15 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
         </div>
       </section>
 
-      {/* Featured Courses */}
+      {/* Featured Courses (2 Rows) */}
       <section className="py-14 px-8 bg-gray-50/50">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-            Khóa Học <span className="gradient-text">Nổi Bật</span>
+            Khóa Học <span className="gradient-text">Mới Nhất</span>
           </h2>
           {courses.length > 0 && (
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-400 font-medium">{courses.length} khóa · Lướt để xem →</span>
+              <span className="text-sm text-gray-400 font-medium">Cuộn để xem {courses.length} khóa học →</span>
               {onNavigate && (
                 <button onClick={() => onNavigate("courses")} className="text-sm font-black text-orange-600 hover:underline">
                   Quản lý
@@ -154,25 +154,24 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
         ) : courses.length === 0 ? (
           <p className="text-center text-gray-400 py-10 font-medium">Chưa có khóa học nào được đăng tải.</p>
         ) : (
-          <HorizontalCarousel itemWidth={272}>
+          <HorizontalCarousel itemWidth={272} rows={2}>
             {courses.map((course, idx) => (
               <Link
                 key={course.id}
                 to={`/course/${course.id}`}
-                className="flex-none w-60 bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:border-orange-200 hover:shadow-[0_12px_40px_rgba(249,115,22,0.15)] hover:-translate-y-1.5 transition-all duration-300 group cursor-pointer"
+                className="flex-none w-60 bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:border-orange-200 hover:shadow-md hover:-translate-y-1 transition-all duration-300 group cursor-pointer"
               >
                 <div className={`h-28 bg-gradient-to-br ${headerGradients[idx % headerGradients.length]} flex items-center justify-center text-5xl group-hover:scale-105 transition-transform duration-500`}>
                   {courseIcons[idx % courseIcons.length]}
                 </div>
-                <div className="p-4">
-                  <h3 className="text-base font-black text-gray-900 mb-1.5 group-hover:text-orange-600 transition-colors line-clamp-2 min-h-[3rem]">
+                <div className="p-3">
+                  <h3 className="text-sm font-black text-gray-900 mb-1 group-hover:text-orange-600 transition-colors line-clamp-1">
                     {course.title}
                   </h3>
-                  <div className="flex items-center gap-2 text-xs text-gray-400 mt-2 font-semibold">
-                    <Users className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
+                    <Users className="w-3 h-3" />
                     <span>{course.studentCount} học viên</span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1 truncate font-medium">{course.creatorName}</p>
                 </div>
               </Link>
             ))}
@@ -209,7 +208,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
         </div>
       </section>
 
-      {/* Latest News */}
+      {/* Latest News (2 Rows) */}
       <section className="py-14 px-8 bg-gray-50/50">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-black text-gray-900 tracking-tight">
@@ -217,7 +216,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
           </h2>
           {news.length > 0 && (
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-400 font-medium">{news.length} bài · Lướt →</span>
+              <span className="text-sm text-gray-400 font-medium">Cuộn ngang để xem tất cả →</span>
               {onNavigate && (
                 <button onClick={() => onNavigate("news")} className="text-sm font-black text-orange-600 hover:underline">
                   Quản lý
@@ -234,29 +233,27 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
         ) : news.length === 0 ? (
           <p className="text-center text-gray-400 py-10 font-medium">Chưa có bài viết nào được đăng tải.</p>
         ) : (
-          <HorizontalCarousel itemWidth={300}>
+          <HorizontalCarousel itemWidth={300} rows={2}>
             {news.map((item) => (
               <Link
                 key={item.id}
                 to={`/news/${item.id}`}
-                className="flex-none bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 transition-all duration-300 hover:border-orange-200 group cursor-pointer overflow-hidden"
+                className="flex-none bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 hover:border-orange-200 group cursor-pointer overflow-hidden"
                 style={{ width: "280px" }}
               >
-                <div className="h-1.5 bg-gradient-to-r from-orange-400 to-amber-400" />
-                <div className="p-5">
-                  <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center text-green-600 mb-4">
-                    <Newspaper className="w-4 h-4" />
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-green-600">
+                      <Newspaper className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] text-gray-400 font-bold">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>
                   </div>
-                  <h3 className="font-black text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2 min-h-[3rem] text-sm">
+                  <h3 className="font-black text-gray-900 mb-1 group-hover:text-orange-600 transition-colors line-clamp-1 text-sm">
                     {item.title}
                   </h3>
-                  <p className="text-gray-500 text-xs mb-3 line-clamp-3 italic leading-relaxed">
+                  <p className="text-gray-500 text-[10px] line-clamp-1 italic">
                     "{stripHtml(item.content)}"
                   </p>
-                  <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-100">
-                    <span className="font-bold text-gray-800">{item.authorName}</span>
-                    <span className="font-medium">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>
-                  </div>
                 </div>
               </Link>
             ))}

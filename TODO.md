@@ -66,11 +66,11 @@ Giai đoạn 5: Xây dựng API Logic nghiệp vụ ⏳
 
 [x] Quản lý nội dung: CRUD Tin tức (bài báo Sinh học), đăng tải Khóa học/Bài giảng gốc.
 
-[ ] Quản lý người dùng:
+[x] Quản lý người dùng:
 
-CRUD tài khoản Giáo viên và Học sinh.
+[x] CRUD tài khoản Giáo viên và Học sinh.
 
-Thay đổi vai trò (Role) của người dùng (ví dụ: nâng cấp Student lên Teacher).
+[x] Thay đổi vai trò (Role) của người dùng (ví dụ: nâng cấp Student lên Teacher).
 
 [ ] Thống kê hệ thống: Xem tổng quan số lượng User, Khóa học, Bài giảng và Tin tức.
 
