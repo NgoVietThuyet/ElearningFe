@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Users, 
   BookOpen, 
@@ -17,43 +17,217 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import HomeView from "../components/HomeView";
+import { adminApi } from "../api/adminApi";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import RichTextEditor from "../components/RichTextEditor";
 
 type AdminSection = "home" | "dashboard" | "users" | "courses" | "news" | "courseDetail" | "feedback";
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState<AdminSection>("home");
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  
+  const [courses, setCourses] = useState<any[]>([]);
+  const [news, setNews] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
 
-  // Mock Data
-  const stats = [
-    { label: "Tổng người dùng", value: "2,547", icon: Users, color: "orange" },
-    { label: "Khóa học", value: "48", icon: BookOpen, color: "blue" },
-    { label: "Tin tức", value: "124", icon: Newspaper, color: "green" },
-    { label: "Truy cập ngày", value: "1,234", icon: BarChart3, color: "purple" },
-  ];
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<"user"|"course"|"news"|"lesson"|null>(null);
+  const [editItem, setEditItem] = useState<any>(null);
+  const [formData, setFormData] = useState<any>({});
 
-  const users = [
-    { id: 1, name: "Nguyễn Văn A", email: "student1@test.com", role: "STUDENT", date: "2024-03-20" },
-    { id: 2, name: "Trần Thị B", email: "teacher1@test.com", role: "TEACHER", date: "2024-03-19" },
-    { id: 3, name: "Lê Văn C", email: "student2@test.com", role: "STUDENT", date: "2024-03-18" },
-    { id: 4, name: "Phạm Thị D", email: "teacher2@test.com", role: "TEACHER", date: "2024-03-17" },
-  ];
+  // Stats State
+  const [gpaData, setGpaData] = useState<any[]>([]);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [stats, setStats] = useState<any[]>([
+    { label: "Tổng người dùng", value: "0", icon: Users, color: "orange" },
+    { label: "Khóa học", value: "0", icon: BookOpen, color: "blue" },
+    { label: "Tin tức", value: "0", icon: Newspaper, color: "green" },
+    { label: "Bài giảng", value: "0", icon: BookOpen, color: "purple" },
+  ]);
 
-  const courses = [
-    { id: 1, title: "Sinh học đại cương", teacher: "Trần Thị B", students: 120, status: "Active" },
-    { id: 2, title: "Di truyền học", teacher: "Phạm Thị D", students: 85, status: "Active" },
-  ];
+  useEffect(() => {
+    fetchCourses();
+    fetchNews();
+    fetchUsers();
 
-  const news = [
-    { id: 1, title: "Cuộc thi sáng tạo khoa học 2024", author: "Admin", date: "2024-05-01" },
-    { id: 2, title: "Cập nhật tài liệu chương 3", author: "Admin", date: "2024-04-28" },
-  ];
+    // Lần đầu tải stats
+    fetchOverviewStats();
+    fetchGpaDistribution();
+    fetchRecentActivities();
 
-  const feedbacks = [
-    { id: 1, student: "Nguyễn Văn A", course: "Sinh học tế bào", teacher: "Trần Thị B", content: "Khóa học rất hay, hình ảnh minh họa sinh động.", date: "2024-05-01" },
-    { id: 2, student: "Lê Văn C", course: "Di truyền học", teacher: "Phạm Thị D", content: "Giảng viên giải thích rất kỹ các khái niệm khó.", date: "2024-04-29" },
-    { id: 3, student: "Trần Thị B", course: "Vi sinh vật", teacher: "Trần Thị B", content: "Nội dung phong phú nhưng hơi nhanh.", date: "2024-04-28" },
-  ];
+    // Auto-refresh stats mỗi 5s
+    const interval = setInterval(() => {
+      fetchOverviewStats();
+      fetchRecentActivities();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchOverviewStats = async () => {
+    try {
+      const res = await adminApi.getOverviewStats();
+      setStats([
+        { label: "Tổng người dùng", value: res.data.totalUsers.toString(), icon: Users, color: "orange" },
+        { label: "Khóa học", value: res.data.totalCourses.toString(), icon: BookOpen, color: "blue" },
+        { label: "Tin tức", value: res.data.totalNews.toString(), icon: Newspaper, color: "green" },
+        { label: "Bài giảng", value: res.data.totalLessons.toString(), icon: BookOpen, color: "purple" },
+      ]);
+    } catch (err) {
+      console.error("Failed to fetch overview stats", err);
+    }
+  };
+
+  const fetchGpaDistribution = async () => {
+    try {
+      const res = await adminApi.getGpaDistribution();
+      setGpaData(res.data);
+    } catch (err) {
+      console.error("Failed to fetch GPA data", err);
+    }
+  };
+
+  const fetchRecentActivities = async () => {
+    try {
+      const res = await adminApi.getRecentActivity();
+      setRecentActivities(res.data);
+    } catch (err) {
+      console.error("Failed to fetch recent activities", err);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await adminApi.getAllUsers();
+      setUsers(res.data);
+    } catch (err) {
+      console.error("Failed to fetch users", err);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const res = await adminApi.getAllCourses();
+      setCourses(res.data);
+    } catch (err) {
+      console.error("Failed to fetch courses", err);
+    }
+  };
+
+  const fetchNews = async () => {
+    try {
+      const res = await adminApi.getAllNews();
+      setNews(res.data);
+    } catch (err) {
+      console.error("Failed to fetch news", err);
+    }
+  };
+
+  const fetchLessons = async (courseId: number) => {
+    try {
+      const res = await adminApi.getLessonsByCourse(courseId);
+      setLessons(res.data);
+    } catch (err) {
+      console.error("Failed to fetch lessons", err);
+    }
+  };
+
+  const handleDeleteCourse = async (id: number) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa khóa học này?")) return;
+    try {
+      await adminApi.deleteCourse(id);
+      toast.success("Xóa khóa học thành công");
+      fetchCourses();
+    } catch (err) {
+      toast.error("Lỗi khi xóa khóa học");
+    }
+  };
+
+  const handleDeleteNews = async (id: number) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa tin tức này?")) return;
+    try {
+      await adminApi.deleteNews(id);
+      toast.success("Xóa tin tức thành công");
+      fetchNews();
+    } catch (err) {
+      toast.error("Lỗi khi xóa tin tức");
+    }
+  };
+
+  const handleDeleteLesson = async (id: number) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa bài giảng này?")) return;
+    try {
+      await adminApi.deleteLesson(id);
+      toast.success("Xóa bài giảng thành công");
+      if (selectedCourse) fetchLessons(selectedCourse.id);
+    } catch (err) {
+      toast.error("Lỗi khi xóa bài giảng");
+    }
+  };
+
+  const handleDeleteUser = async (id: number) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa người dùng này?")) return;
+    try {
+      await adminApi.deleteUser(id);
+      toast.success("Xóa người dùng thành công");
+      fetchUsers();
+    } catch (err) {
+      toast.error("Lỗi khi xóa người dùng");
+    }
+  };
+
+  const handleOpenModal = (type: "user"|"course"|"news"|"lesson", item: any = null) => {
+    setModalType(type);
+    setEditItem(item);
+    if (item) {
+      setFormData({ ...item });
+    } else {
+      if (type === "user") setFormData({ role: 2 }); // STUDENT default
+      else if (type === "lesson") setFormData({ courseId: selectedCourse?.id });
+      else setFormData({});
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setModalType(null);
+    setEditItem(null);
+    setFormData({});
+  };
+
+  const handleModalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (modalType === "user") {
+        if (editItem) await adminApi.updateUser(editItem.id, { fullName: formData.fullName, role: parseInt(formData.role) });
+        else await adminApi.createUser({ ...formData, role: parseInt(formData.role) });
+        fetchUsers();
+      } else if (modalType === "course") {
+        if (editItem) await adminApi.updateCourse(editItem.id, formData);
+        else await adminApi.createCourse(formData);
+        fetchCourses();
+      } else if (modalType === "news") {
+        if (editItem) await adminApi.updateNews(editItem.id, formData);
+        else await adminApi.createNews(formData);
+        fetchNews();
+      } else if (modalType === "lesson") {
+        if (editItem) await adminApi.updateLesson(editItem.id, formData);
+        else await adminApi.createLesson(formData);
+        if (selectedCourse) fetchLessons(selectedCourse.id);
+      }
+      toast.success(`${editItem ? "Cập nhật" : "Tạo"} thành công!`);
+      handleCloseModal();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Có lỗi xảy ra");
+    }
+  };
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
 
   const renderCourseDetail = (course: any) => (
     <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
@@ -70,20 +244,34 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Danh sách bài học</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Danh sách bài học</h3>
+              <button onClick={() => handleOpenModal("lesson")} className="flex items-center gap-1 text-sm text-orange-600 hover:text-orange-700 font-medium bg-orange-50 px-3 py-1.5 rounded-lg">
+                <Plus className="w-4 h-4" /> Thêm bài giảng
+              </button>
+            </div>
             <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 text-sm font-bold">{i}</div>
-                    <span className="font-medium text-gray-900">Bài giảng {i}: Nội dung cơ bản</span>
+              {lessons.length === 0 ? (
+                <p className="text-sm text-gray-500 italic p-4">Chưa có bài giảng nào.</p>
+              ) : (
+                lessons.map((lesson, index) => (
+                  <div key={lesson.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 text-sm font-bold">{index + 1}</div>
+                      <div>
+                        <span className="font-medium text-gray-900 block">{lesson.title}</span>
+                        <a href={lesson.videoUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">Video</a>
+                        {" | "}
+                        <a href={lesson.pdfUrl} target="_blank" rel="noreferrer" className="text-xs text-red-500 hover:underline">PDF</a>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleOpenModal("lesson", lesson)} className="p-2 text-gray-400 hover:text-orange-600"><Edit className="w-4 h-4" /></button>
+                      <button onClick={() => handleDeleteLesson(lesson.id)} className="p-2 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button className="p-2 text-gray-400 hover:text-orange-600"><Edit className="w-4 h-4" /></button>
-                    <button className="p-2 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -92,9 +280,9 @@ export default function AdminDashboard() {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h3 className="font-bold text-gray-900 mb-4">Chi tiết khóa học</h3>
             <div className="space-y-3 text-sm text-gray-600">
-              <div className="flex justify-between"><span>Giáo viên:</span> <span className="font-medium text-gray-900">{course.teacher}</span></div>
-              <div className="flex justify-between"><span>Sĩ số:</span> <span className="font-medium text-gray-900">{course.students}</span></div>
-              <div className="flex justify-between"><span>Trạng thái:</span> <span className="text-green-600 font-bold">{course.status}</span></div>
+              <div className="flex justify-between"><span>Giáo viên tạo:</span> <span className="font-medium text-gray-900">{course.creatorName || "N/A"}</span></div>
+              <div className="flex justify-between"><span>Sĩ số (Mock):</span> <span className="font-medium text-gray-900">0</span></div>
+              <div className="flex justify-between"><span>Trạng thái:</span> <span className="text-green-600 font-bold">Active</span></div>
             </div>
           </div>
         </div>
@@ -122,58 +310,43 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Create User Form */}
+        {/* GPA Chart */}
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600">
-              <UserPlus className="w-5 h-5" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">Tạo mới người dùng</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Phân bố GPA Sinh viên</h2>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={gpaData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
+                <Tooltip cursor={{fill: '#f9fafb'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                <Bar dataKey="count" fill="#ea580c" radius={[4, 4, 0, 0]} barSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); toast.success("Đã tạo người dùng thành công!"); }}>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Họ và tên</label>
-                <input type="text" className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="Nguyễn Văn A" required />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Vai trò</label>
-                <select className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
-                  <option value="STUDENT">Học sinh</option>
-                  <option value="TEACHER">Giáo viên</option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Email</label>
-              <input type="email" className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="email@example.com" required />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Mật khẩu</label>
-              <input type="password" placeholder="••••••••" className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" required />
-            </div>
-            <button type="submit" className="w-full bg-orange-600 text-white py-2.5 rounded-lg font-medium hover:bg-orange-700 transition-colors shadow-sm shadow-orange-200">
-              Tạo tài khoản
-            </button>
-          </form>
         </div>
 
         {/* Quick Actions / Recent activity */}
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Hoạt động gần đây</h2>
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 h-[380px] overflow-y-auto custom-scrollbar">
+          <h2 className="text-xl font-bold text-gray-900 mb-6 sticky top-0 bg-white z-10 pb-2">Hoạt động gần đây</h2>
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600">
-                  <UserPlus className="w-5 h-5" />
+            {recentActivities.length === 0 ? (
+              <p className="text-sm text-gray-500 italic p-4 text-center">Chưa có hoạt động nào.</p>
+            ) : (
+              recentActivities.map((activity, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activity.type === 'Tin tức' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                    {activity.type === 'Tin tức' ? <Newspaper className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(activity.timestamp).toLocaleString("vi-VN")} • {activity.action} bởi <span className="font-semibold">{activity.by}</span>
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">Người dùng mới vừa tham gia</p>
-                  <p className="text-xs text-gray-500">2 giờ trước • student@test.com</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -185,14 +358,9 @@ export default function AdminDashboard() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h2 className="text-xl font-bold text-gray-900">Danh sách người dùng</h2>
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm..." 
-              className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none w-full md:w-64 text-sm"
-            />
-          </div>
+          <button onClick={() => handleOpenModal("user")} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors">
+            <Plus className="w-4 h-4" /> Thêm người dùng
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -220,10 +388,10 @@ export default function AdminDashboard() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.date}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                     <div className="flex justify-end gap-2">
-                      <button className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all">
+                      <button onClick={() => handleOpenModal("user", user)} className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                      <button onClick={() => handleDeleteUser(user.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -247,26 +415,30 @@ export default function AdminDashboard() {
                 <BookOpen className="w-6 h-6" />
               </div>
               <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-                {course.status}
+                Active
               </span>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1 cursor-pointer hover:text-orange-600 transition-colors" onClick={() => { setSelectedCourse(course); setActiveSection("courseDetail"); }}>{course.title}</h3>
-            <p className="text-sm text-gray-500 mb-4">Giáo viên: {course.teacher}</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-1 cursor-pointer hover:text-orange-600 transition-colors" onClick={() => { setSelectedCourse(course); fetchLessons(course.id); setActiveSection("courseDetail"); }}>{course.title}</h3>
+            <p className="text-sm text-gray-500 mb-4 truncate">{course.description || "Chưa có mô tả"}</p>
             <div className="flex items-center justify-between pt-4 border-t border-gray-50">
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Users className="w-4 h-4" />
-                <span>{course.students} học sinh</span>
+                <span>Người tạo: {course.creatorName || "Admin"}</span>
               </div>
-              <button 
-                onClick={() => { setSelectedCourse(course); setActiveSection("courseDetail"); }}
-                className="text-sm font-semibold text-orange-600 hover:text-orange-700"
-              >
-                Chi tiết
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => handleOpenModal("course", course)} className="p-2 text-gray-400 hover:text-orange-600"><Edit className="w-4 h-4" /></button>
+                <button onClick={() => handleDeleteCourse(course.id)} className="p-2 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                <button 
+                  onClick={() => { setSelectedCourse(course); fetchLessons(course.id); setActiveSection("courseDetail"); }}
+                  className="text-sm font-semibold text-orange-600 hover:text-orange-700 ml-2"
+                >
+                  Chi tiết
+                </button>
+              </div>
             </div>
           </div>
         ))}
-        <button className="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center text-gray-400 hover:border-orange-300 hover:text-orange-500 transition-all group">
+        <button onClick={() => handleOpenModal("course")} className="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center text-gray-400 hover:border-orange-300 hover:text-orange-500 transition-all group">
           <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mb-2 group-hover:bg-orange-50 transition-colors">
             <Plus className="w-6 h-6" />
           </div>
@@ -281,7 +453,7 @@ export default function AdminDashboard() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900">Quản lý tin tức</h2>
-          <button className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors">
+          <button onClick={() => handleOpenModal("news")} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors">
             <Plus className="w-4 h-4" /> Viết bài mới
           </button>
         </div>
@@ -294,14 +466,14 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-gray-900">{item.title}</h4>
-                  <p className="text-xs text-gray-500 mt-1">Người đăng: {item.author} • {item.date}</p>
+                  <p className="text-xs text-gray-500 mt-1">Người đăng: {item.authorName || "Admin"} • {new Date(item.createdAt).toLocaleDateString("vi-VN")}</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg">
+                <button onClick={() => handleOpenModal("news", item)} className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg">
                   <Edit className="w-4 h-4" />
                 </button>
-                <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                <button onClick={() => handleDeleteNews(item.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -385,6 +557,7 @@ export default function AdminDashboard() {
                         key={course.id}
                         onClick={() => {
                           setSelectedCourse(course);
+                          fetchLessons(course.id);
                           setActiveSection("courseDetail");
                         }}
                         className={`w-full text-left px-4 py-2 text-xs rounded-lg transition-colors ${
@@ -421,7 +594,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {activeSection === "home" && <HomeView />}
+          {activeSection === "home" && <HomeView onNavigate={setActiveSection} />}
           {activeSection === "dashboard" && renderDashboard()}
           {activeSection === "users" && renderUsers()}
           {activeSection === "courses" && renderCourses()}
@@ -430,6 +603,120 @@ export default function AdminDashboard() {
           {activeSection === "courseDetail" && renderCourseDetail(selectedCourse)}
         </div>
       </main>
+
+      {/* Reusable Modal for CRUD */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              {editItem ? "Cập nhật " : "Tạo mới "}
+              {modalType === "user" && "Người dùng"}
+              {modalType === "course" && "Khóa học"}
+              {modalType === "news" && "Tin tức"}
+              {modalType === "lesson" && "Bài giảng"}
+            </h2>
+
+            <form onSubmit={handleModalSubmit} className="space-y-4">
+              {/* USER FORM */}
+              {modalType === "user" && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Họ và tên</label>
+                    <input type="text" required value={formData.fullName || ""} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" />
+                  </div>
+                  {!editItem && (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" required value={formData.email || ""} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Mật khẩu</label>
+                        <input type="password" required minLength={6} value={formData.password || ""} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" />
+                      </div>
+                    </>
+                  )}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Vai trò</label>
+                    <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
+                      <option value={0}>Admin</option>
+                      <option value={1}>Giáo viên</option>
+                      <option value={2}>Học sinh</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* COURSE FORM */}
+              {modalType === "course" && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Tên khóa học</label>
+                    <input type="text" required value={formData.title || ""} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Mô tả (hỗ trợ ảnh, link, định dạng văn bản)</label>
+                    <RichTextEditor
+                      value={formData.description || ""}
+                      onChange={(html) => setFormData({...formData, description: html})}
+                      placeholder="Nhập mô tả khóa học..."
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* NEWS FORM */}
+              {modalType === "news" && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Tiêu đề</label>
+                    <input type="text" required value={formData.title || ""} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Nội dung (hỗ trợ ảnh, link Google Drive, định dạng văn bản)</label>
+                    <RichTextEditor
+                      value={formData.content || ""}
+                      onChange={(html) => setFormData({...formData, content: html})}
+                      placeholder="Nhập nội dung bài viết..."
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* LESSON FORM */}
+              {modalType === "lesson" && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Tên bài giảng</label>
+                    <input type="text" required value={formData.title || ""} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Mô tả</label>
+                    <input type="text" required value={formData.description || ""} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Link Video</label>
+                    <input type="url" required value={formData.videoUrl || ""} onChange={e => setFormData({...formData, videoUrl: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Link PDF</label>
+                    <input type="url" required value={formData.pdfUrl || ""} onChange={e => setFormData({...formData, pdfUrl: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" />
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onClick={handleCloseModal} className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium">
+                  Hủy
+                </button>
+                <button type="submit" className="flex-1 px-4 py-2 text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors font-medium shadow-sm shadow-orange-200">
+                  Lưu thay đổi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

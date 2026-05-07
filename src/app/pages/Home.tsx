@@ -1,49 +1,68 @@
 import { Link } from "react-router";
-import { ArrowRight, BookOpen, Users, Award, TrendingUp } from "lucide-react";
+import { ArrowRight, BookOpen, Users, Award, TrendingUp, Newspaper, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
+import { publicApi } from "../api/publicApi";
+import HorizontalCarousel from "../components/HorizontalCarousel";
+
+interface Course {
+  id: number;
+  title: string;
+  description: string;
+  creatorName: string;
+  lessonCount: number;
+  studentCount: number;
+}
+
+interface NewsItem {
+  id: number;
+  title: string;
+  content: string;
+  authorName: string;
+  createdAt: string;
+}
+
+const courseIcons = ["🔬", "🧬", "🦠", "🌱", "🧫", "🧪", "🦋", "🌿", "🐛", "🌺", "🦅", "🌊"];
+
+const learningPath = [
+  { step: "Nghiên cứu", icon: BookOpen },
+  { step: "Sáng tạo", icon: TrendingUp },
+  { step: "Tương tác", icon: Users },
+  { step: "Cải tiến", icon: Award },
+];
 
 export default function Home() {
-  const courses = [
-    { id: 1, title: "Sinh học tế bào", icon: "🔬", students: 1234 },
-    { id: 2, title: "Di truyền học", icon: "🧬", students: 987 },
-    { id: 3, title: "Vi sinh vật", icon: "🦠", students: 765 },
-    { id: 4, title: "Tiến hóa", icon: "🌱", students: 543 },
-  ];
-
-  const learningPath = [
-    { step: "Nghiên cứu", icon: BookOpen, color: "orange" },
-    { step: "Sáng tạo", icon: TrendingUp, color: "orange" },
-    { step: "Tương tác", icon: Users, color: "orange" },
-    { step: "Cải tiến", icon: Award, color: "orange" },
-  ];
-
-  const testimonials = [
-    {
-      name: "Nguyễn Văn A",
-      role: "Học sinh lớp 12",
-      content: "Nền tảng tuyệt vời giúp tôi hiểu sâu hơn về sinh học!",
-      avatar: "👨‍🎓",
-    },
-    {
-      name: "Trần Thị B",
-      role: "Sinh viên Đại học",
-      content: "Giáo trình rất chi tiết và dễ hiểu, giảng viên nhiệt tình.",
-      avatar: "👩‍🎓",
-    },
-    {
-      name: "Lê Văn C",
-      role: "Giáo viên THPT",
-      content: "Tài liệu phong phú, phù hợp cho cả giảng dạy và tự học.",
-      avatar: "👨‍🏫",
-    },
-  ];
-
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     setIsLoggedIn(!!token);
+
+    const fetchData = async () => {
+      try {
+        const [coursesRes, newsRes] = await Promise.all([
+          publicApi.getCourses(),
+          publicApi.getNews(),
+        ]);
+        setCourses(coursesRes.data);
+        setNews(newsRes.data);
+      } catch (err) {
+        console.error("Failed to load homepage data", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
+
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
 
   return (
     <div className="bg-white">
@@ -58,12 +77,14 @@ export default function Home() {
               Nền tảng học trực tuyến hàng đầu về Sinh học với hàng trăm khóa học chất lượng cao
             </p>
             <div className="flex gap-4 justify-center">
-              <Link
-                to="/signup"
-                className="px-8 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
-              >
-                Bắt đầu học ngay <ArrowRight className="w-5 h-5" />
-              </Link>
+              {!isLoggedIn && (
+                <Link
+                  to="/signup"
+                  className="px-8 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+                >
+                  Bắt đầu học ngay <ArrowRight className="w-5 h-5" />
+                </Link>
+              )}
               <Link
                 to="/student"
                 className="px-8 py-3 border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 transition-colors"
@@ -75,7 +96,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Learning Path */}
+      {/* Learning Path — static */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
@@ -94,25 +115,47 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Courses */}
+      {/* Featured Courses — horizontal carousel */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
-            Danh Mục Khóa Học Nổi Bật
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {courses.map((course) => (
-              <Link
-                key={course.id}
-                to="/student"
-                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 hover:border-orange-300"
-              >
-                <div className="text-5xl mb-4">{course.icon}</div>
-                <h3 className="font-semibold text-gray-900 mb-2">{course.title}</h3>
-                <p className="text-sm text-gray-600">{course.students} học viên</p>
-              </Link>
-            ))}
+          <div className="flex items-center justify-between mb-10">
+            <h2 className="text-3xl font-bold text-gray-900">
+              Danh Mục Khóa Học
+            </h2>
+            {courses.length > 0 && (
+              <span className="text-sm text-gray-400">{courses.length} khóa học • Lướt để xem thêm →</span>
+            )}
           </div>
+
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+            </div>
+          ) : courses.length === 0 ? (
+            <p className="text-center text-gray-500 py-10">Chưa có khóa học nào được đăng tải.</p>
+          ) : (
+            <HorizontalCarousel itemWidth={272}>
+              {courses.map((course, idx) => (
+                <Link
+                  key={course.id}
+                  to={`/course/${course.id}`}
+                  className="flex-none w-64 bg-white p-6 rounded-xl shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all border border-gray-200 hover:border-orange-300 group cursor-pointer"
+                  style={{ scrollSnapAlign: "start" }}
+                >
+                  <div className="text-5xl mb-4">{courseIcons[idx % courseIcons.length]}</div>
+                  <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2 min-h-[3rem]">
+                    {course.title}
+                  </h3>
+                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-3">
+                    <span>{course.lessonCount} bài giảng</span>
+                    <span>•</span>
+                    <span>{course.studentCount} học viên</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1 truncate">Giảng viên: {course.creatorName}</p>
+                </Link>
+              ))}
+            </HorizontalCarousel>
+          )}
         </div>
       </section>
 
@@ -141,24 +184,50 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Latest News — horizontal carousel */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
-            Phản Hồi Học Viên
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <div className="text-4xl mb-4">{testimonial.avatar}</div>
-                <p className="text-gray-700 mb-4 italic">"{testimonial.content}"</p>
-                <div>
-                  <p className="font-semibold text-gray-900">{testimonial.name}</p>
-                  <p className="text-sm text-gray-600">{testimonial.role}</p>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-between mb-10">
+            <h2 className="text-3xl font-bold text-gray-900">
+              Tin Tức &amp; Bài Viết
+            </h2>
+            {news.length > 0 && (
+              <span className="text-sm text-gray-400">{news.length} bài viết • Lướt để xem thêm →</span>
+            )}
           </div>
+
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+            </div>
+          ) : news.length === 0 ? (
+            <p className="text-center text-gray-500 py-10">Chưa có bài viết nào được đăng tải.</p>
+          ) : (
+            <HorizontalCarousel itemWidth={320}>
+            {news.map((item) => (
+                <Link
+                  key={item.id}
+                  to={`/news/${item.id}`}
+                  className="flex-none w-76 bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-orange-300 hover:scale-[1.02] transition-all group cursor-pointer"
+                  style={{ width: "300px", scrollSnapAlign: "start" }}
+                >
+                  <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center text-green-600 mb-4">
+                    <Newspaper className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors line-clamp-2 min-h-[3rem]">
+                    {item.title}
+                  </h3>
+                  <p className="text-gray-500 text-sm mb-4 line-clamp-3 italic">
+                    "{stripHtml(item.content)}"
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-100">
+                    <span className="font-medium text-gray-600">{item.authorName}</span>
+                    <span>{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>
+                  </div>
+                </Link>
+              ))}
+            </HorizontalCarousel>
+          )}
         </div>
       </section>
 
@@ -172,7 +241,7 @@ export default function Home() {
             </p>
             <Link
               to="/signup"
-              className="inline-flex items-center gap-2 px-8 py-3 bg-white text-orange-600 rounded-lg hover:bg-gray-100 transition-colors"
+              className="inline-flex items-center gap-2 px-8 py-3 bg-white text-orange-600 rounded-lg hover:bg-gray-100 transition-colors font-medium"
             >
               Đăng ký ngay <ArrowRight className="w-5 h-5" />
             </Link>

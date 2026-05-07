@@ -1,49 +1,68 @@
 import { Link } from "react-router";
-import { ArrowRight, BookOpen, Users, Award, TrendingUp } from "lucide-react";
+import { ArrowRight, BookOpen, Users, Award, TrendingUp, Newspaper, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { publicApi } from "../api/publicApi";
+import HorizontalCarousel from "./HorizontalCarousel";
 
-export default function HomeView() {
-  const courses = [
-    { id: 1, title: "Sinh học tế bào", icon: "🔬", students: 1234 },
-    { id: 2, title: "Di truyền học", icon: "🧬", students: 987 },
-    { id: 3, title: "Vi sinh vật", icon: "🦠", students: 765 },
-    { id: 4, title: "Tiến hóa", icon: "🌱", students: 543 },
-  ];
+interface Course {
+  id: number;
+  title: string;
+  description: string;
+  creatorName: string;
+  lessonCount: number;
+  studentCount: number;
+}
 
-  const learningPath = [
-    { step: "Nghiên cứu", icon: BookOpen, color: "orange" },
-    { step: "Sáng tạo", icon: TrendingUp, color: "orange" },
-    { step: "Tương tác", icon: Users, color: "orange" },
-    { step: "Cải tiến", icon: Award, color: "orange" },
-  ];
+interface NewsItem {
+  id: number;
+  title: string;
+  content: string;
+  authorName: string;
+  createdAt: string;
+}
 
-  const testimonials = [
-    {
-      name: "Nguyễn Văn A",
-      role: "Học sinh lớp 12",
-      content: "Nền tảng tuyệt vời giúp tôi hiểu sâu hơn về sinh học!",
-      avatar: "👨‍🎓",
-    },
-    {
-      name: "Trần Thị B",
-      role: "Sinh viên Đại học",
-      content: "Giáo trình rất chi tiết và dễ hiểu, giảng viên nhiệt tình.",
-      avatar: "👩‍🎓",
-    },
-    {
-      name: "Lê Văn C",
-      role: "Giáo viên THPT",
-      content: "Tài liệu phong phú, phù hợp cho cả giảng dạy và tự học.",
-      avatar: "👨‍🏫",
-    },
-  ];
+interface HomeViewProps {
+  onNavigate?: (section: any) => void;
+}
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+const courseIcons = ["🔬", "🧬", "🦠", "🌱", "🧫", "🧪", "🦋", "🌿", "🐛", "🌺", "🦅", "🌊"];
+
+const learningPath = [
+  { step: "Nghiên cứu", icon: BookOpen },
+  { step: "Sáng tạo", icon: TrendingUp },
+  { step: "Tương tác", icon: Users },
+  { step: "Cải tiến", icon: Award },
+];
+
+export default function HomeView({ onNavigate }: HomeViewProps) {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
+    const fetchData = async () => {
+      try {
+        const [coursesRes, newsRes] = await Promise.all([
+          publicApi.getCourses(),
+          publicApi.getNews(),
+        ]);
+        setCourses(coursesRes.data);
+        setNews(newsRes.data);
+      } catch (err) {
+        console.error("Failed to load dashboard home data", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
+
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
 
   return (
     <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 animate-in fade-in zoom-in-95 duration-500">
@@ -57,14 +76,6 @@ export default function HomeView() {
             Nền tảng học trực tuyến hàng đầu với hàng trăm khóa học chất lượng cao, 
             giúp bạn chinh phục mọi kiến thức sinh học từ cơ bản đến nâng cao.
           </p>
-          <div className="flex gap-4 justify-center">
-            <Link
-              to="/signup"
-              className="px-8 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-all flex items-center gap-2 shadow-lg shadow-orange-200 font-bold"
-            >
-              Bắt đầu ngay <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -87,24 +98,43 @@ export default function HomeView() {
 
       {/* Featured Courses */}
       <section className="py-16 px-8 bg-gray-50/50">
-        <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
-          Khóa Học Nổi Bật
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {courses.map((course) => (
-            <div
-              key={course.id}
-              className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:border-orange-300 hover:shadow-xl transition-all duration-300 group"
-            >
-              <div className="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300">{course.icon}</div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{course.title}</h3>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Users className="w-4 h-4" />
-                <span>{course.students} học viên</span>
-              </div>
+        <div className="flex items-center justify-between mb-10">
+          <h2 className="text-3xl font-bold text-gray-900">Khóa Học Nổi Bật</h2>
+          {courses.length > 0 && (
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-400">{courses.length} khóa học • Lướt để xem thêm →</span>
+              {onNavigate && (
+                <button onClick={() => onNavigate("courses")} className="text-sm font-bold text-orange-600 hover:underline">Quản lý</button>
+              )}
             </div>
-          ))}
+          )}
         </div>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+          </div>
+        ) : courses.length === 0 ? (
+          <p className="text-center text-gray-500 py-10">Chưa có khóa học nào được đăng tải.</p>
+        ) : (
+          <HorizontalCarousel itemWidth={272}>
+            {courses.map((course, idx) => (
+              <Link
+                key={course.id}
+                to={`/course/${course.id}`}
+                className="flex-none w-64 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:border-orange-300 hover:shadow-xl hover:scale-[1.02] transition-all group cursor-pointer"
+              >
+                <div className="text-5xl mb-6 group-hover:scale-110 transition-transform duration-300">{courseIcons[idx % courseIcons.length]}</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2 min-h-[3.5rem]">{course.title}</h3>
+                <div className="flex items-center gap-3 text-sm text-gray-500 mt-4">
+                  <Users className="w-4 h-4" />
+                  <span>{course.studentCount} học viên</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-2 truncate">Giảng viên: {course.creatorName}</p>
+              </Link>
+            ))}
+          </HorizontalCarousel>
+        )}
       </section>
 
       {/* Ecosystem Section */}
@@ -136,25 +166,53 @@ export default function HomeView() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Latest News */}
       <section className="py-16 px-8 bg-gray-50/50">
-        <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
-          Phản Hồi Học Viên
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {testimonials.map((testimonial, index) => (
-            <div key={index} className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300">
-              <div className="text-5xl mb-6">{testimonial.avatar}</div>
-              <p className="text-gray-700 mb-6 italic leading-relaxed text-lg">"{testimonial.content}"</p>
-              <div>
-                <p className="font-bold text-gray-900 text-lg">{testimonial.name}</p>
-                <p className="text-orange-600 font-medium">{testimonial.role}</p>
-              </div>
+        <div className="flex items-center justify-between mb-10">
+          <h2 className="text-3xl font-bold text-gray-900">Tin Tức &amp; Bài Viết</h2>
+          {news.length > 0 && (
+             <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-400">{news.length} bài viết • Lướt để xem thêm →</span>
+              {onNavigate && (
+                <button onClick={() => onNavigate("news")} className="text-sm font-bold text-orange-600 hover:underline">Quản lý</button>
+              )}
             </div>
-          ))}
+          )}
         </div>
-      </section>
 
+        {isLoading ? (
+          <div className="flex justify-center items-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+          </div>
+        ) : news.length === 0 ? (
+          <p className="text-center text-gray-500 py-10">Chưa có bài viết nào được đăng tải.</p>
+        ) : (
+          <HorizontalCarousel itemWidth={320}>
+            {news.map((item) => (
+              <Link
+                key={item.id}
+                to={`/news/${item.id}`}
+                className="flex-none w-76 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-orange-200 hover:scale-[1.02] transition-all group cursor-pointer"
+                style={{ width: "300px" }}
+              >
+                <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center text-green-600 mb-4">
+                  <Newspaper className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors line-clamp-2 min-h-[3.5rem]">
+                  {item.title}
+                </h3>
+                <p className="text-gray-600 text-sm mb-4 line-clamp-3 italic leading-relaxed">
+                  "{stripHtml(item.content)}"
+                </p>
+                <div className="flex items-center justify-between text-xs text-gray-400 pt-4 border-t border-gray-50">
+                  <span className="font-bold text-gray-900">{item.authorName}</span>
+                  <span>{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>
+                </div>
+              </Link>
+            ))}
+          </HorizontalCarousel>
+        )}
+      </section>
     </div>
   );
 }
