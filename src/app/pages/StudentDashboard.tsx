@@ -1,15 +1,5 @@
 import { useState, useEffect } from "react";
-import { 
-  BookOpen, 
-  CheckCircle, 
-  Lock, 
-  Play, 
-  LayoutDashboard, 
-  Home as HomeIcon,
-  MessageSquare,
-  Loader2,
-  GraduationCap
-} from "lucide-react";
+import { BookOpen, CircleCheck as CheckCircle, Lock, Play, LayoutDashboard, Chrome as HomeIcon, MessageSquare, Loader as Loader2, GraduationCap } from "lucide-react";
 import { Link } from "react-router";
 import HomeView from "../components/HomeView";
 import { studentApi } from "../api/studentApi";

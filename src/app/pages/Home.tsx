@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { ArrowRight, BookOpen, Users, Award, TrendingUp, Newspaper, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, BookOpen, Users, Award, TrendingUp, Newspaper, Loader as Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { publicApi } from "../api/publicApi";
 import HorizontalCarousel from "../components/HorizontalCarousel";

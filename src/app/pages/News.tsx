@@ -1,4 +1,4 @@
-import { Calendar, User, ArrowRight, Newspaper, TrendingUp, Loader2 } from "lucide-react";
+import { Calendar, User, ArrowRight, Newspaper, TrendingUp, Loader as Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { publicApi } from "../api/publicApi";

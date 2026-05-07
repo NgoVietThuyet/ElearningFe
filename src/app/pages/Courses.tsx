@@ -1,4 +1,4 @@
-import { Search, Filter, BookOpen, Users, Star, Clock, Loader2 } from "lucide-react";
+import { Search, ListFilter as Filter, BookOpen, Users, Star, Clock, Loader as Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { publicApi } from "../api/publicApi";
