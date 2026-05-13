@@ -11,7 +11,7 @@ import NewsDetail from "./pages/NewsDetail";
 import Courses from "./pages/Courses";
 import News from "./pages/News";
 import Feedback from "./pages/Feedback";
-import Layout from "./components/Layout";
+import Layout from "./components/common/Layout";
 
 export const router = createBrowserRouter([
   {

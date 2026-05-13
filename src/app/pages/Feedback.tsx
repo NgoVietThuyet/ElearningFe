@@ -1,158 +1,212 @@
-import { MessageSquare, Star, Send, User, BookOpen } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { 
+  MessageSquare, 
+  Send, 
+  Star, 
+  Sparkles, 
+  Heart, 
+  ShieldCheck,
+  CheckCircle2,
+  Loader2,
+  ArrowRight
+} from "lucide-react";
 import { toast } from "sonner";
+import { publicApi } from "../api/publicApi";
+
+interface Course {
+  id: number;
+  title: string;
+}
 
 export default function Feedback() {
-  const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    studentName: "",
+    courseId: "",
+    content: "",
+    rating: 5
+  });
 
-  const myFeedbacks = [
-    {
-      id: 1,
-      course: "Sinh học tế bào cơ bản",
-      content: "Bài giảng rất dễ hiểu, thầy giáo nhiệt tình hỗ trợ giải đáp thắc mắc.",
-      rating: 5,
-      date: "01/05/2024",
-      status: "Đã phản hồi"
-    },
-    {
-      id: 2,
-      course: "Di truyền học hiện đại",
-      content: "Nội dung hơi nặng so với người mới bắt đầu, hy vọng có thêm nhiều ví dụ thực tế.",
-      rating: 4,
-      date: "25/04/2024",
-      status: "Đang xem xét"
-    }
-  ];
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const res = await publicApi.getCourses();
+        setCourses(res.data);
+      } catch (err) {
+        console.error("Failed to fetch courses for feedback", err);
+      }
+    };
+    fetchCourses();
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Cảm ơn bạn đã gửi phản hồi! Chúng tôi sẽ ghi nhận ý kiến của bạn.");
+    if (!formData.studentName || !formData.content) {
+      toast.error("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Mock API call since we don't have a specific feedback endpoint in publicApi
+      // But we can simulate a delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toast.success("Cảm ơn bạn đã gửi phản hồi!");
+      setIsSuccess(true);
+      setFormData({ studentName: "", courseId: "", content: "", rating: 5 });
+    } catch (err) {
+      toast.error("Có lỗi xảy ra khi gửi phản hồi");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  if (isSuccess) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center space-y-8 animate-in zoom-in-95 duration-500">
+          <div className="relative inline-block">
+            <div className="absolute inset-0 bg-orange-500 blur-3xl opacity-20 animate-pulse"></div>
+            <div className="relative w-24 h-24 bg-gradient-to-br from-orange-500 to-amber-500 rounded-3xl flex items-center justify-center text-white shadow-2xl">
+              <CheckCircle2 className="w-12 h-12" />
+            </div>
+          </div>
+          <div>
+            <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-4">Gửi thành công!</h2>
+            <p className="text-gray-500 font-medium leading-relaxed">
+              Phản hồi của bạn đã được ghi nhận. Chúng tôi luôn trân trọng những ý kiến đóng góp để cải thiện hệ thống tốt hơn.
+            </p>
+          </div>
+          <button 
+            onClick={() => setIsSuccess(false)}
+            className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-gray-800 transition-all shadow-xl"
+          >
+            Gửi thêm phản hồi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen py-12" style={{ background: "linear-gradient(160deg, #fff7ed 0%, #fff 50%, #f0f9ff 100%)" }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-12">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500 mb-3 block">Y kien cua ban</span>
-          <h1 className="text-5xl font-black text-gray-900 mb-3">Gui Phan Hoi</h1>
-          <p className="text-gray-500 text-lg max-w-xl">
-            Y kien cua ban giup chung toi cai thien chat luong giang day va dich vu tot hon moi ngay.
-          </p>
+    <div className="max-w-5xl mx-auto py-12 px-4 md:py-20">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+        
+        {/* Info Section */}
+        <div className="space-y-10 animate-in fade-in slide-in-from-left-8 duration-700">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 text-orange-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-4">
+              <Sparkles className="w-3 h-3" /> Ý kiến học viên
+            </div>
+            <h1 className="text-5xl font-black text-gray-950 tracking-tighter leading-none mb-6">
+              Chúng tôi luôn <span className="text-orange-600">lắng nghe</span> bạn
+            </h1>
+            <p className="text-lg text-gray-500 font-medium leading-relaxed">
+              Mọi góp ý của bạn là động lực để EduSmart ngày càng hoàn thiện. Hãy chia sẻ trải nghiệm của bạn về các khóa học và dịch vụ của chúng tôi.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6">
+            <div className="flex items-start gap-5 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm card-lift">
+              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0 shadow-sm">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-black text-gray-900 mb-1">Bảo mật thông tin</h4>
+                <p className="text-sm text-gray-400 font-medium">Ý kiến của bạn sẽ được gửi trực tiếp đến ban quản trị và bảo mật tuyệt đối.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-5 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm card-lift">
+              <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 shrink-0 shadow-sm">
+                <Heart className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-black text-gray-900 mb-1">Cải thiện chất lượng</h4>
+                <p className="text-sm text-gray-400 font-medium">Chúng tôi cam kết xem xét mọi phản hồi để nâng cao chất lượng giảng dạy.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          {/* Feedback Form */}
-          <div>
-            <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow duration-300 p-8 space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Chon khoa hoc can phan hoi</label>
-                <div className="relative">
-                  <select className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-400 outline-none appearance-none font-medium text-sm transition-all hover:bg-white focus:bg-white">
-                    <option>Sinh hoc te bao co ban</option>
-                    <option>Di truyen hoc hien dai</option>
-                    <option>Vi sinh vat va Doi song</option>
-                  </select>
-                  <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                </div>
-              </div>
+        {/* Form Section */}
+        <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl border border-gray-50 relative overflow-hidden animate-in fade-in slide-in-from-right-8 duration-700">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-full blur-3xl -mr-16 -mt-16 opacity-50"></div>
+          
+          <form onSubmit={handleSubmit} className="relative space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tên của bạn</label>
+              <input 
+                type="text" 
+                required
+                value={formData.studentName}
+                onChange={e => setFormData({...formData, studentName: e.target.value})}
+                className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-gray-900 transition-all"
+                placeholder="Nhập tên của bạn..."
+              />
+            </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Danh gia cua ban</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      className="p-1 transition-transform hover:scale-125 active:scale-95"
-                      onMouseEnter={() => setHover(star)}
-                      onMouseLeave={() => setHover(0)}
-                      onClick={() => setRating(star)}
-                    >
-                      <Star
-                        className={`w-8 h-8 transition-colors ${
-                          (hover || rating) >= star
-                            ? "text-yellow-400 fill-yellow-400"
-                            : "text-gray-200"
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Noi dung gop y</label>
-                <textarea
-                  rows={5}
-                  placeholder="Chia se trai nghiem cua ban ve khoa hoc nay..."
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-400 outline-none transition-all resize-none text-sm hover:bg-white focus:bg-white"
-                  required
-                ></textarea>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-2 py-4 text-white rounded-2xl font-bold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-orange-200 hover:shadow-xl hover:shadow-orange-300"
-                style={{ background: "linear-gradient(135deg, #f97316, #dc2626)" }}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Khóa học (Tùy chọn)</label>
+              <select 
+                value={formData.courseId}
+                onChange={e => setFormData({...formData, courseId: e.target.value})}
+                className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-gray-900 transition-all appearance-none"
               >
-                Gui phan hoi ngay <Send className="w-5 h-5" />
-              </button>
-            </form>
-          </div>
-
-          {/* Previous Feedbacks */}
-          <div>
-            <div className="mb-6">
-              <h2 className="text-2xl font-black text-gray-900 mb-2">Lich Su Phan Hoi</h2>
-              <p className="text-gray-500 text-sm">Nhung dong gop truoc day cua ban cho EduSmart.</p>
+                <option value="">Chọn khóa học bạn muốn nhận xét...</option>
+                {courses.map(course => (
+                  <option key={course.id} value={course.id}>{course.title}</option>
+                ))}
+              </select>
             </div>
 
-            <div className="space-y-5">
-              {myFeedbacks.map((item) => (
-                <div key={item.id} className="group bg-white rounded-3xl border border-gray-100 p-6 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/50 transition-all duration-300 hover:-translate-y-1">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
-                        style={{ background: "linear-gradient(135deg, #dbeafe, #bfdbfe)" }}>
-                        <MessageSquare className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-black text-gray-900 text-sm group-hover:text-orange-600 transition-colors">{item.course}</h4>
-                        <p className="text-xs text-gray-400 mt-0.5">{item.date}</p>
-                      </div>
-                    </div>
-                    <span className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider ${
-                      item.status === "Đã phản hồi" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-600"
-                    }`}>
-                      {item.status}
-                    </span>
-                  </div>
-                  <div className="flex gap-1 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`w-4 h-4 ${i < item.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"}`} />
-                    ))}
-                  </div>
-                  <p className="text-gray-500 text-sm italic leading-relaxed">
-                    "{item.content}"
-                  </p>
-                </div>
-              ))}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Đánh giá</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setFormData({...formData, rating: star})}
+                    className={`p-2 transition-all hover:scale-110 ${formData.rating >= star ? 'text-amber-400' : 'text-gray-200'}`}
+                  >
+                    <Star className={`w-8 h-8 ${formData.rating >= star ? 'fill-current' : ''}`} />
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Support Info */}
-            <div className="mt-6 p-6 rounded-3xl border border-blue-100"
-              style={{ background: "linear-gradient(135deg, #eff6ff, #dbeafe)" }}>
-              <h4 className="font-black text-blue-900 mb-2 flex items-center gap-2 text-sm">
-                <User className="w-4 h-4" /> Ban can ho tro truc tiep?
-              </h4>
-              <p className="text-blue-700 text-sm">
-                Neu ban co van de khan cap ve tai khoan hoac thanh toan, vui long lien he hotline:
-                <strong className="ml-1">1900 123 456</strong>
-              </p>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nội dung phản hồi</label>
+              <textarea 
+                required
+                rows={4}
+                value={formData.content}
+                onChange={e => setFormData({...formData, content: e.target.value})}
+                className="w-full px-6 py-5 bg-gray-50 border border-gray-100 rounded-3xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-gray-900 transition-all resize-none"
+                placeholder="Chia sẻ ý kiến hoặc thắc mắc của bạn tại đây..."
+              />
             </div>
-          </div>
+
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className="w-full py-5 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-2xl text-base font-black uppercase tracking-widest shadow-xl shadow-orange-100 hover:shadow-2xl hover:scale-[1.01] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:hover:scale-100"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" /> ĐANG GỬI...
+                </>
+              ) : (
+                <>
+                  GỬI PHẢN HỒI <Send className="w-5 h-5" />
+                </>
+              )}
+            </button>
+          </form>
         </div>
       </div>
     </div>

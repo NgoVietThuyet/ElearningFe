@@ -101,11 +101,19 @@
   -webkit-backdrop-filter: blur(18px);
   border: 1px solid rgba(255,255,255,0.35);
 }
+.dark .glass {
+  background: rgba(26, 29, 35, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
 .glass-orange {
   background: rgba(255,237,213,0.55);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(249,115,22,0.18);
+}
+.dark .glass-orange {
+  background: rgba(234, 88, 12, 0.08);
+  border: 1px solid rgba(234, 88, 12, 0.15);
 }
 
 /* ─── Gradient Text ─── */
@@ -143,6 +151,9 @@
   transform: translateY(-6px) scale(1.01);
   box-shadow: 0 24px 60px rgba(249,115,22,0.18), 0 8px 30px rgba(0,0,0,0.07);
 }
+.dark .card-lift:hover {
+  box-shadow: 0 24px 60px rgba(249,115,22,0.12), 0 0 40px rgba(0,0,0,0.5);
+}
 
 /* ─── Mesh / Hero Background ─── */
 .mesh-bg {
@@ -153,6 +164,15 @@
     radial-gradient(at 5%  55%,  rgba(249,115,22,0.10) 0px, transparent 55%),
     radial-gradient(at 90% 60%,  rgba(236,72,153,0.07) 0px, transparent 50%),
     radial-gradient(at 50% 100%, rgba(249,115,22,0.10) 0px, transparent 55%);
+}
+.dark .mesh-bg {
+  background-color: #0f1115;
+  background-image:
+    radial-gradient(at 20% 10%,  rgba(234,88,12,0.12) 0px, transparent 55%),
+    radial-gradient(at 80% 5%,   rgba(234,88,12,0.08) 0px, transparent 50%),
+    radial-gradient(at 5%  55%,  rgba(139,92,246,0.05) 0px, transparent 55%),
+    radial-gradient(at 90% 60%,  rgba(236,72,153,0.05) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(234,88,12,0.08) 0px, transparent 55%);
 }
 
 /* ─── Gradient Borders (pseudo-element trick) ─── */
@@ -209,3 +229,10 @@
 .course-header-3 { background: linear-gradient(135deg, #faf5ff, #e9d5ff); }
 .course-header-4 { background: linear-gradient(135deg, #fff1f2, #fecdd3); }
 .course-header-5 { background: linear-gradient(135deg, #fefce8, #fef08a); }
+
+.dark .course-header-0 { background: linear-gradient(135deg, #2a1b10, #432a15); }
+.dark .course-header-1 { background: linear-gradient(135deg, #062016, #0e3d2a); }
+.dark .course-header-2 { background: linear-gradient(135deg, #081a33, #132f5e); }
+.dark .course-header-3 { background: linear-gradient(135deg, #1a1033, #31215e); }
+.dark .course-header-4 { background: linear-gradient(135deg, #2d0a10, #5a151f); }
+.dark .course-header-5 { background: linear-gradient(135deg, #2a2810, #4d4915); }

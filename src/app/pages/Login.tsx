@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Microscope, Loader2, Eye, EyeOff } from "lucide-react";
+import { Microscope, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { authService } from "../api/authService";
 import { toast } from "sonner";
 import { jwtDecode } from "jwt-decode";
@@ -33,7 +33,7 @@ export default function Login() {
         const role = decoded.role || decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
         if (role === "ADMIN") navigate("/admin");
         else if (role === "TEACHER") navigate("/teacher");
-        else navigate("/");
+        else navigate("/student");
       } catch (decodeError) {
         console.error("Failed to decode token:", decodeError);
         navigate("/student");
@@ -48,7 +48,16 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-68px)] flex items-center justify-center mesh-bg py-12 px-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center mesh-bg py-12 px-4 relative overflow-hidden">
+      {/* Back to home button */}
+      <Link 
+        to="/" 
+        className="absolute top-8 left-8 flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-orange-600 transition-all duration-300 group z-50 bg-white/50 backdrop-blur-md px-4 py-2 rounded-xl border border-white/40 shadow-sm"
+      >
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        Quay về trang chủ
+      </Link>
+
       {/* Decorative blobs */}
       <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-gradient-to-br from-orange-200 to-amber-200 rounded-full filter blur-[80px] opacity-50 pointer-events-none animate-float-slow" />
       <div className="absolute bottom-[-5%] left-[-5%] w-80 h-80 bg-gradient-to-br from-violet-200 to-pink-200 rounded-full filter blur-[80px] opacity-40 pointer-events-none animate-float-slow" style={{ animationDelay: "4s" }} />

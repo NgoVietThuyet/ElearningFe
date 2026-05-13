@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  // baseURL: "http://localhost:5081", // Backend URL from launchSettings.json
-  baseURL: "https://elearningbe-nq9w.onrender.com", // Backend URL from Render
+  baseURL: "http://localhost:5081", // Backend URL from launchSettings.json
+  // baseURL: "https://elearningbe-nq9w.onrender.com", // Backend URL from Render
   headers: {
     "Content-Type": "application/json",
   },
@@ -17,7 +17,7 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Handle 401 Unauthorized responses globally — clear token and redirect to login
@@ -30,7 +30,7 @@ apiClient.interceptors.response.use(
       window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

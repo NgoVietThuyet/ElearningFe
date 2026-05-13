@@ -17,6 +17,7 @@ import {
   Undo,
   Redo,
   Unlink,
+  X,
 } from "lucide-react";
 
 interface RichTextEditorProps {
@@ -53,12 +54,11 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nhập 
     editorProps: {
       attributes: {
         class:
-          "min-h-[200px] max-h-[400px] overflow-y-auto outline-none px-4 py-3 prose prose-sm max-w-none prose-orange focus:outline-none",
+          "min-h-[200px] max-h-[400px] overflow-y-auto outline-none px-6 py-4 prose prose-sm max-w-none dark:prose-invert prose-orange focus:outline-none dark:text-gray-300",
       },
     },
   });
 
-  // Sync content if value prop changes externally (e.g., editing an existing item)
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
       editor.commands.setContent(value || "");
@@ -102,23 +102,22 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nhập 
       type="button"
       onMouseDown={(e) => { e.preventDefault(); onClick(); }}
       title={title}
-      className={`p-1.5 rounded transition-colors ${
+      className={`p-2 rounded-lg transition-all ${
         active
-          ? "bg-orange-100 text-orange-700"
-          : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+          ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"
+          : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
       }`}
     >
       {children}
     </button>
   );
 
-  const Divider = () => <div className="w-px h-5 bg-gray-200 mx-1 self-center" />;
+  const Divider = () => <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1.5 self-center" />;
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-orange-500 transition-all">
+    <div className="border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/50 focus-within:border-orange-500 transition-all bg-white dark:bg-gray-900/50">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200">
-        {/* Headings */}
+      <div className="flex flex-wrap items-center gap-1 px-4 py-3 bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
         <ToolbarBtn title="Tiêu đề lớn (H1)" active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
           <Heading1 className="w-4 h-4" />
         </ToolbarBtn>
@@ -128,7 +127,6 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nhập 
 
         <Divider />
 
-        {/* Text styles */}
         <ToolbarBtn title="In đậm (Ctrl+B)" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold className="w-4 h-4" />
         </ToolbarBtn>
@@ -141,7 +139,6 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nhập 
 
         <Divider />
 
-        {/* Lists */}
         <ToolbarBtn title="Danh sách không thứ tự" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
           <List className="w-4 h-4" />
         </ToolbarBtn>
@@ -151,7 +148,6 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nhập 
 
         <Divider />
 
-        {/* Link */}
         <ToolbarBtn title="Chèn link" active={editor.isActive("link")} onClick={() => { setShowLinkDialog(true); setLinkUrl(editor.getAttributes("link").href || ""); }}>
           <LinkIcon className="w-4 h-4" />
         </ToolbarBtn>
@@ -161,14 +157,12 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nhập 
           </ToolbarBtn>
         )}
 
-        {/* Image */}
         <ToolbarBtn title="Chèn ảnh qua URL" onClick={() => setShowImageDialog(true)}>
           <ImageIcon className="w-4 h-4" />
         </ToolbarBtn>
 
         <Divider />
 
-        {/* Undo/Redo */}
         <ToolbarBtn title="Hoàn tác (Ctrl+Z)" onClick={() => editor.chain().focus().undo().run()}>
           <Undo className="w-4 h-4" />
         </ToolbarBtn>
@@ -182,32 +176,33 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nhập 
 
       {/* Link Dialog */}
       {showLinkDialog && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 w-80 shadow-2xl">
-            <h3 className="font-bold text-gray-900 mb-4">Chèn liên kết</h3>
-            <div className="space-y-3">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300 border border-gray-100 dark:border-gray-700 relative">
+            <button onClick={() => setShowLinkDialog(false)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><X className="w-5 h-5" /></button>
+            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-6">Liên kết web</h3>
+            <div className="space-y-4">
               <input
                 autoFocus
                 type="url"
-                placeholder="https://drive.google.com/... hoặc bất kỳ URL nào"
+                placeholder="https://example.com"
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-gray-900 dark:text-white transition-all"
                 onKeyDown={(e) => { if (e.key === "Enter") insertLink(); if (e.key === "Escape") setShowLinkDialog(false); }}
               />
               {editor.state.selection.empty && (
                 <input
                   type="text"
-                  placeholder="Tên hiển thị (nếu không chọn text)"
+                  placeholder="Tên hiển thị..."
                   value={linkText}
                   onChange={(e) => setLinkText(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-gray-900 dark:text-white transition-all"
                 />
               )}
             </div>
-            <div className="flex gap-2 mt-4">
-              <button type="button" onClick={() => setShowLinkDialog(false)} className="flex-1 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Hủy</button>
-              <button type="button" onClick={insertLink} className="flex-1 py-2 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">Chèn link</button>
+            <div className="flex gap-3 mt-8">
+              <button type="button" onClick={() => setShowLinkDialog(false)} className="flex-1 py-4 text-xs font-black uppercase tracking-widest text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-xl hover:bg-gray-100 transition-all">Hủy</button>
+              <button type="button" onClick={insertLink} className="flex-1 py-4 text-xs font-black uppercase tracking-widest text-white bg-orange-600 rounded-xl hover:bg-orange-700 transition-all shadow-lg shadow-orange-100 dark:shadow-none">Chèn link</button>
             </div>
           </div>
         </div>
@@ -215,26 +210,27 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nhập 
 
       {/* Image Dialog */}
       {showImageDialog && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 w-80 shadow-2xl">
-            <h3 className="font-bold text-gray-900 mb-4">Chèn ảnh từ URL</h3>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300 border border-gray-100 dark:border-gray-700 relative">
+            <button onClick={() => setShowImageDialog(false)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"><X className="w-5 h-5" /></button>
+            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-6">Chèn ảnh từ URL</h3>
             <input
               autoFocus
               type="url"
-              placeholder="https://i.imgur.com/... hoặc link Google Drive CDN"
+              placeholder="https://images.unsplash.com/..."
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-gray-900 dark:text-white transition-all"
               onKeyDown={(e) => { if (e.key === "Enter") insertImage(); if (e.key === "Escape") setShowImageDialog(false); }}
             />
             {imageUrl && (
-              <div className="mt-3 rounded-lg overflow-hidden border border-gray-100 max-h-32">
+              <div className="mt-4 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 max-h-40">
                 <img src={imageUrl} alt="Preview" className="w-full object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
               </div>
             )}
-            <div className="flex gap-2 mt-4">
-              <button type="button" onClick={() => setShowImageDialog(false)} className="flex-1 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Hủy</button>
-              <button type="button" onClick={insertImage} className="flex-1 py-2 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">Chèn ảnh</button>
+            <div className="flex gap-3 mt-8">
+              <button type="button" onClick={() => setShowImageDialog(false)} className="flex-1 py-4 text-xs font-black uppercase tracking-widest text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-xl hover:bg-gray-100 transition-all">Hủy</button>
+              <button type="button" onClick={insertImage} className="flex-1 py-4 text-xs font-black uppercase tracking-widest text-white bg-orange-600 rounded-xl hover:bg-orange-700 transition-all shadow-lg shadow-orange-100 dark:shadow-none">Chèn ảnh</button>
             </div>
           </div>
         </div>

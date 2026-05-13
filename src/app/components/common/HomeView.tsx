@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { ArrowRight, BookOpen, Users, Award, TrendingUp, Newspaper, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { publicApi } from "../api/publicApi";
+import { publicApi } from "../../api/publicApi";
 import HorizontalCarousel from "./HorizontalCarousel";
 
 interface Course {
