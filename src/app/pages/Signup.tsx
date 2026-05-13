@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Microscope, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Microscope, Loader2, Eye, EyeOff, ArrowLeft, Users, Edit } from "lucide-react";
 import { authService } from "../api/authService";
 import { toast } from "sonner";
 
@@ -9,6 +9,9 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +25,13 @@ export default function Signup() {
     }
     setIsLoading(true);
     try {
-      const response = await authService.register({ fullName: name, email, password });
+      const response = await authService.register({ 
+        fullName: name, 
+        email, 
+        password,
+        dateOfBirth: dateOfBirth || undefined,
+        avatarFile: avatarFile || undefined
+      });
       toast.success(response.message || "Đăng ký thành công!");
       navigate("/login");
     } catch (error: any) {
@@ -30,6 +39,18 @@ export default function Signup() {
       toast.error(message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -59,37 +80,75 @@ export default function Signup() {
             <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[0_8px_25px_rgba(249,115,22,0.45)] animate-pulse-glow">
               <Microscope className="w-9 h-9 text-white" />
             </div>
-            <h2 className="text-3xl font-black text-gray-900 tracking-tight">Đăng ký</h2>
-            <p className="text-gray-500 mt-2 font-medium">Tạo tài khoản mới để bắt đầu học 🚀</p>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Đăng ký</h2>
+            <p className="text-gray-500 mt-1.5 font-medium text-xs">Tạo tài khoản mới để bắt đầu học 🚀</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-bold text-gray-700 mb-2">Họ và tên</label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className={inputClass}
-                placeholder="Nguyễn Văn A"
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* Avatar Upload */}
+            <div className="flex flex-col items-center mb-4">
+              <div className="relative group cursor-pointer" onClick={() => document.getElementById('avatar-input')?.click()}>
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Avatar" className="w-20 h-20 rounded-2xl object-cover border-2 border-orange-100 group-hover:border-orange-400 transition-all" />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 group-hover:border-orange-400 group-hover:text-orange-400 transition-all">
+                    <Users className="w-8 h-8" />
+                  </div>
+                )}
+                <div className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-lg border border-gray-100 shadow-sm text-orange-500">
+                  <Edit className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <input 
+                id="avatar-input" 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleAvatarChange} 
                 disabled={isLoading}
               />
+              <span className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-widest">Ảnh đại diện</span>
             </div>
+            <div className="grid grid-cols-2 gap-3.5">
+              <div className="col-span-2">
+                <label htmlFor="name" className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Họ và tên</label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className={inputClass}
+                  placeholder="Nguyễn Văn A"
+                  disabled={isLoading}
+                />
+              </div>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-bold text-gray-700 mb-2">Email</label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className={inputClass}
-                placeholder="your@email.com"
-                disabled={isLoading}
-              />
+              <div className="col-span-2">
+                <label htmlFor="email" className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className={inputClass}
+                  placeholder="your@email.com"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label htmlFor="dob" className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Ngày sinh</label>
+                <input
+                  id="dob"
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  className={inputClass}
+                  disabled={isLoading}
+                />
+              </div>
             </div>
 
             <div>
@@ -141,7 +200,7 @@ export default function Signup() {
             <button
               type="submit"
               disabled={isLoading}
-              className="btn-gradient w-full text-white py-4 rounded-xl font-black text-base flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+              className="btn-gradient w-full text-white py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-4 shadow-lg shadow-orange-100"
             >
               {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
               {isLoading ? "Đang xử lý..." : "Tạo tài khoản"}

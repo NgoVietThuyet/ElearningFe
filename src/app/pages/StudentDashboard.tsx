@@ -73,7 +73,7 @@ export default function StudentDashboard() {
                     style={{ width: `${stats?.overallProgress || 0}%` }}
                   />
                 </div>
-                <p className="mt-3 text-orange-50 font-bold text-sm tracking-wide opacity-90">Bạn đã hoàn thành {stats?.overallProgress || 0}% lộ trình. Tiếp tục cố gắng nhé!</p>
+                <p className="mt-3 text-orange-50 font-bold text-sm tracking-wide opacity-90">Bạn đã hoàn thành {stats?.overallProgress || 0}% tiến độ học tập. Tiếp tục cố gắng nhé!</p>
               </div>
               <div className="flex flex-col items-center">
                 <span className="text-6xl font-black tabular-nums tracking-tighter drop-shadow-md">{stats?.overallProgress || 0}%</span>
@@ -126,70 +126,67 @@ export default function StudentDashboard() {
           ))}
           {courses.length === 0 && (
             <div className="col-span-full text-center py-20 bg-gray-50 rounded-[2.5rem] border-2 border-dashed border-gray-100">
-               <BookOpen className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-               <p className="text-gray-400 font-black uppercase text-xs tracking-widest italic">Bạn chưa đăng ký khóa học nào.</p>
+              <BookOpen className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+              <p className="text-gray-400 font-black uppercase text-xs tracking-widest italic">Bạn chưa đăng ký khóa học nào.</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Lessons List */}
-      <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-8 border-b border-gray-100 bg-gray-50/30">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
-                <Activity className="w-6 h-6" />
-             </div>
-             <h2 className="text-2xl font-black text-gray-900 tracking-tight">Lộ trình học tập tiếp theo</h2>
+      <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
+        <div className="p-6 border-b border-border bg-[#F8F9FB]/50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
+              <Activity className="w-5 h-5" />
+            </div>
+            <h2 className="text-xl font-bold text-[#0F172A] tracking-tight">Bài học tiếp theo</h2>
           </div>
         </div>
-        <div className="p-8">
+        <div className="p-6">
           <div className="space-y-4">
             {lessons.map((lesson) => (
               <div
                 key={lesson.id}
-                className={`flex flex-col sm:flex-row items-center justify-between p-6 rounded-3xl border transition-all duration-300 ${
-                  lesson.status === "locked"
+                className={`flex flex-col sm:flex-row items-center justify-between p-6 rounded-3xl border transition-all duration-300 ${lesson.status === "locked"
                     ? "border-gray-50 bg-gray-50/20 opacity-50"
                     : "border-gray-100 bg-white hover:border-orange-200 hover:bg-orange-50/20 hover:shadow-lg group"
-                }`}
+                  }`}
               >
-                <div className="flex items-center gap-6 w-full sm:w-auto mb-4 sm:mb-0">
+                <div className="flex items-center gap-4 w-full sm:w-auto mb-4 sm:mb-0">
                   <div
-                    className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm ${
-                      lesson.status === "completed"
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm ${lesson.status === "completed"
                         ? "bg-green-100 text-green-600"
                         : lesson.status === "current"
-                        ? "bg-orange-100 text-orange-600 group-hover:bg-orange-600 group-hover:text-white group-hover:rotate-12"
-                        : "bg-gray-100 text-gray-400"
-                    }`}
+                          ? "bg-orange-100 text-orange-600 group-hover:bg-orange-600 group-hover:text-white"
+                          : "bg-gray-100 text-gray-400"
+                      }`}
                   >
                     {lesson.status === "completed" ? (
-                      <CheckCircle className="w-7 h-7" />
+                      <CheckCircle className="w-6 h-6" />
                     ) : lesson.status === "current" ? (
-                      <Play className="w-7 h-7 fill-current" />
+                      <Play className="w-6 h-6 fill-current" />
                     ) : (
-                      <Lock className="w-7 h-7" />
+                      <Lock className="w-6 h-6" />
                     )}
                   </div>
                   <div>
-                    <h3 className={`text-lg font-black transition-colors ${lesson.status === "locked" ? "text-gray-400" : "text-gray-900 group-hover:text-orange-600"}`}>
+                    <h3 className={`text-base font-bold transition-colors ${lesson.status === "locked" ? "text-gray-400" : "text-[#0F172A] group-hover:text-[#FF6B00]"}`}>
                       {lesson.title}
                     </h3>
-                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1.5 flex items-center gap-2">
-                       <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
-                       {lesson.duration} THỜI LƯỢNG
+                    <p className="text-[10px] text-[#667085] font-bold uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                      <span className="w-1 h-1 rounded-full bg-[#FF6B00]"></span>
+                      {lesson.duration}
                     </p>
                   </div>
                 </div>
                 {lesson.status !== "locked" && (
                   <Link
                     to={`/course/${lesson.courseId}`}
-                    className={`w-full sm:w-auto px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 text-center ${
-                      lesson.status === "completed"
-                        ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        : "bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg shadow-orange-100 hover:shadow-xl hover:scale-105"
-                    }`}
+                    className={`w-full sm:w-auto px-6 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all text-center ${lesson.status === "completed"
+                        ? "bg-[#F8F9FB] text-[#667085] hover:bg-[#F1F3F5]"
+                        : "bg-[#FF6B00] text-white shadow-md hover:bg-[#E65F00]"
+                      }`}
                   >
                     {lesson.status === "completed" ? "XEM LẠI" : "BẮT ĐẦU HỌC"}
                   </Link>
@@ -198,8 +195,8 @@ export default function StudentDashboard() {
             ))}
             {lessons.length === 0 && (
               <div className="text-center py-16">
-                 <Loader2 className="w-10 h-10 text-gray-100 mx-auto mb-4 animate-spin" />
-                 <p className="text-gray-400 font-black uppercase text-[10px] tracking-widest italic">Chưa có bài học nào được đề xuất cho bạn.</p>
+                <Loader2 className="w-10 h-10 text-gray-100 mx-auto mb-4 animate-spin" />
+                <p className="text-gray-400 font-black uppercase text-[10px] tracking-widest italic">Chưa có bài học nào được đề xuất cho bạn.</p>
               </div>
             )}
           </div>
@@ -220,13 +217,10 @@ export default function StudentDashboard() {
         </div>
       ) : (
         <>
-          <div className="mb-12 flex flex-col gap-3">
-            <h1 className="text-4xl font-black tracking-tighter text-gray-950">
-              {activeSection === "dashboard" ? "Trung tâm Học tập" : "Chi tiết lộ trình"}
-            </h1>
-          </div>
-          <div className="pb-24">
-            {activeSection === "dashboard" && renderDashboard()}
+          <div className="pt-6">
+            <div className="pb-24">
+              {activeSection === "dashboard" && renderDashboard()}
+            </div>
           </div>
         </>
       )}

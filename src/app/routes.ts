@@ -11,6 +11,8 @@ import NewsDetail from "./pages/NewsDetail";
 import Courses from "./pages/Courses";
 import News from "./pages/News";
 import Feedback from "./pages/Feedback";
+import Teachers from "./pages/Teachers";
+import About from "./pages/About";
 import Layout from "./components/common/Layout";
 
 export const router = createBrowserRouter([
@@ -28,8 +30,10 @@ export const router = createBrowserRouter([
       { path: "course/:id", Component: CourseDetail },
       { path: "news/:id", Component: NewsDetail },
       { path: "courses", Component: Courses },
+      { path: "teachers", Component: Teachers },
       { path: "news", Component: News },
       { path: "feedback", Component: Feedback },
+      { path: "about", Component: About },
     ],
   },
 ]);

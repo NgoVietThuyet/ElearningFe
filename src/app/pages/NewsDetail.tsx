@@ -57,47 +57,37 @@ export default function NewsDetail() {
   return (
     <div className="bg-white min-h-screen pb-20">
       {/* Article Header */}
-      <div className="max-w-4xl mx-auto px-4 pt-12 pb-8">
-        <Link to="/news" className="inline-flex items-center gap-2 text-gray-500 hover:text-orange-600 transition-colors mb-8 font-medium group">
+      <div className="max-w-3xl mx-auto px-4 pt-12 pb-8">
+        <Link to="/news" className="inline-flex items-center gap-2 text-gray-500 hover:text-orange-600 transition-colors mb-6 text-sm font-medium group">
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Quay lại danh sách tin tức
+          Quay lại
         </Link>
         
         <div className="mb-8">
-          <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wider mb-6">
-            Tin tức khoa học
+          <span className="inline-block px-2 py-0.5 bg-orange-50 text-orange-700 rounded-md text-[10px] font-bold uppercase tracking-wider mb-3 border border-orange-100">
+            Tin tức
           </span>
-          <h1 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight mb-8">
+          <h1 className="text-3xl font-bold text-[#0F172A] leading-tight mb-4">
             {article.title}
           </h1>
           
-          <div className="flex flex-wrap items-center justify-between gap-6 pb-8 border-b border-gray-100">
-            <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center font-bold">
-                  {article.authorName.charAt(0)}
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900">{article.authorName}</p>
-                  <p className="text-gray-500 text-xs">Biên tập viên EduSmart</p>
-                </div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 text-xs">
+              <div className="w-8 h-8 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center font-bold text-[10px]">
+                {article.authorName.charAt(0)}
               </div>
-              <div className="h-8 w-px bg-gray-100 hidden sm:block"></div>
-              <div className="flex items-center gap-1 text-gray-500">
-                <Calendar className="w-4 h-4" />
-                <span>{new Date(article.createdAt).toLocaleDateString("vi-VN", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              <div>
+                <p className="font-bold text-[#0F172A]">{article.authorName}</p>
+                <div className="flex items-center gap-1.5 text-[#667085]">
+                  <Calendar className="w-3 h-3" />
+                  <span>{new Date(article.createdAt).toLocaleDateString("vi-VN")}</span>
+                </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              <button onClick={copyLink} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500" title="Sao chép liên kết">
-                <LinkIcon className="w-5 h-5" />
-              </button>
-              <button className="p-2 hover:bg-blue-50 rounded-full transition-colors text-blue-600" title="Chia sẻ Facebook">
-                <Facebook className="w-5 h-5" />
-              </button>
-              <button className="p-2 hover:bg-sky-50 rounded-full transition-colors text-sky-500" title="Chia sẻ Twitter">
-                <Twitter className="w-5 h-5" />
+            <div className="flex items-center gap-1">
+              <button onClick={copyLink} className="p-1.5 hover:bg-[#F8F9FB] rounded-md transition-all text-[#667085]" title="Sao chép">
+                <LinkIcon className="w-4 h-4" />
               </button>
             </div>
           </div>

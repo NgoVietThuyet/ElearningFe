@@ -41,8 +41,30 @@ export const adminApi = {
   // Courses
   getAllCourses: () => apiClient.get("/api/admin/courses/get_all"),
   getCourseById: (id: number) => apiClient.get(`/api/admin/courses/get_by_id/${id}`),
-  createCourse: (data: { title: string; description: string; avatarUrl?: string | null; teacherId?: number | null }) => apiClient.post("/api/admin/courses/create", data),
-  updateCourse: (id: number, data: { title: string; description: string; avatarUrl?: string | null; teacherId?: number | null }) => apiClient.put(`/api/admin/courses/update/${id}`, data),
+  createCourse: (data: {
+    title: string;
+    description: string;
+    avatarUrl?: string | null;
+    teacherId?: number | null;
+    category?: string;
+    status?: string;
+    durationMinutes?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    learningOutcomes?: string;
+  }) => apiClient.post("/api/admin/courses/create", data),
+  updateCourse: (id: number, data: {
+    title: string;
+    description: string;
+    avatarUrl?: string | null;
+    teacherId?: number | null;
+    category?: string;
+    status?: string;
+    durationMinutes?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    learningOutcomes?: string;
+  }) => apiClient.put(`/api/admin/courses/update/${id}`, data),
   deleteCourse: (id: number) => apiClient.delete(`/api/admin/courses/delete/${id}`),
 
   // Lessons

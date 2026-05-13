@@ -97,12 +97,12 @@ export default function TeacherDashboard() {
         <h2 className="text-2xl font-black text-gray-900 tracking-tight">{lesson.title}</h2>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-black text-gray-900">Nội dung chi tiết</h3>
-              <button className="text-xs font-black uppercase bg-orange-600 text-white px-5 py-2.5 rounded-xl hover:bg-orange-700 transition-all">CHỈNH SỬA</button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-border">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-[#0F172A]">Nội dung chi tiết</h3>
+              <button className="text-[10px] font-bold uppercase bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-all">CHỈNH SỬA</button>
             </div>
             <div className="prose prose-orange max-w-none text-gray-600 font-medium">
               <p>Đây là nội dung chi tiết của bài giảng <strong>{lesson.title}</strong>. Nội dung này được thiết kế để cung cấp kiến thức chuyên sâu về chủ đề này.</p>
@@ -138,8 +138,9 @@ export default function TeacherDashboard() {
   );
 
   const renderDashboard = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="relative bg-gradient-to-br from-orange-500 via-orange-600 to-amber-500 rounded-[2.5rem] p-10 text-white overflow-hidden shadow-[0_20px_60px_rgba(249,115,22,0.35)]">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Overall Progress */}
+      <div className="relative bg-gradient-to-br from-orange-500 via-orange-600 to-amber-500 rounded-xl p-8 mb-8 text-white overflow-hidden shadow-lg shadow-orange-100">
         <img
           src="/assets/dna.gif"
           alt=""
@@ -153,62 +154,62 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {[
           { label: "Học sinh của tôi", value: stats?.studentCount || 0, icon: Users, color: "orange" },
           { label: "Bài giảng đã đăng", value: stats?.lessonCount || 0, icon: FileText, color: "blue" },
           { label: "Tỷ lệ hoàn thành", value: stats?.completionRate || "0%", icon: CheckCircle, color: "green" },
         ].map((stat, index) => (
-          <div key={index} className="bg-white p-7 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition-all card-lift">
+          <div key={index} className="bg-white p-5 rounded-xl shadow-sm border border-border hover:shadow-md transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
-                <p className="text-3xl font-black text-gray-900 mt-2 tracking-tighter">{stat.value}</p>
+                <p className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">{stat.label}</p>
+                <p className="text-2xl font-bold text-[#0F172A] mt-1 tracking-tight">{stat.value}</p>
               </div>
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                 stat.color === 'orange' ? 'bg-orange-50 text-orange-600' : 
                 stat.color === 'blue' ? 'bg-blue-50 text-blue-600' : 
                 'bg-green-50 text-green-600'
               } shadow-sm`}>
-                <stat.icon className="w-7 h-7" />
+                <stat.icon className="w-6 h-6" />
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 card-lift">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 shadow-sm">
-              <UserPlus className="w-6 h-6" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-border">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 shadow-sm">
+              <UserPlus className="w-5 h-5" />
             </div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Thêm học sinh mới</h2>
+            <h2 className="text-lg font-bold text-[#0F172A] tracking-tight">Thêm học sinh mới</h2>
           </div>
-          <form className="space-y-6" onSubmit={handleAddStudent}>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Địa chỉ Email học viên</label>
+          <form className="space-y-4" onSubmit={handleAddStudent}>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">Email học viên</label>
               <input 
                 type="email" 
-                className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-gray-900 transition-all" 
+                className="w-full px-4 py-3 bg-[#F8F9FB] border border-border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-bold text-[#0F172A] text-xs transition-all" 
                 placeholder="student@example.com" 
                 value={newStudentEmail}
                 onChange={(e) => setNewStudentEmail(e.target.value)}
                 required 
               />
             </div>
-            <button type="submit" className="w-full bg-gradient-to-r from-orange-600 to-amber-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:shadow-xl transition-all">
+            <button type="submit" className="w-full bg-[#FF6B00] text-white py-3 rounded-lg font-bold uppercase text-[10px] tracking-widest hover:bg-[#E65F00] transition-all">
               THÊM VÀO LỚP HỌC
             </button>
           </form>
         </div>
 
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 overflow-hidden card-lift">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Bài giảng mới đăng</h2>
-            <button onClick={() => setActiveSection("lessons")} className="text-[10px] text-orange-600 font-black uppercase tracking-widest hover:underline px-3 py-1 bg-orange-50 rounded-lg">Xem tất cả</button>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold text-[#0F172A] tracking-tight">Bài giảng mới đăng</h2>
+            <button onClick={() => setActiveSection("lessons")} className="text-[10px] text-orange-600 font-bold uppercase tracking-widest hover:underline px-3 py-1 bg-orange-50 rounded-md">Xem tất cả</button>
           </div>
-          <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+          <div className="space-y-2.5 max-h-[260px] overflow-y-auto custom-scrollbar pr-2">
             {lessons.map((lesson) => (
               <div key={lesson.id} className="p-5 rounded-2xl border border-gray-100 bg-gray-50/50 hover:border-orange-200 hover:bg-orange-50/30 transition-all group cursor-pointer" onClick={() => { setSelectedLesson(lesson); setActiveSection("lessonDetail"); }}>
                 <div className="flex items-center justify-between mb-2">
@@ -229,15 +230,15 @@ export default function TeacherDashboard() {
 
   const renderStudents = () => (
     <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-      <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-8 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gray-50/30">
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight">Danh sách học sinh</h2>
-          <div className="relative w-full md:w-80">
-            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+      <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
+        <div className="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#F8F9FB]/50">
+          <h2 className="text-xl font-bold text-[#0F172A] tracking-tight">Danh sách học sinh</h2>
+          <div className="relative w-full md:w-72">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#98A2B3]" />
             <input 
               type="text" 
-              placeholder="Tìm kiếm học viên..." 
-              className="pl-12 pr-6 py-3.5 bg-white border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none w-full text-sm font-bold text-gray-900 transition-all"
+              placeholder="Tìm kiếm..." 
+              className="pl-10 pr-4 py-2.5 bg-white border border-border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none w-full text-xs font-bold text-[#0F172A] transition-all"
             />
           </div>
         </div>
@@ -362,30 +363,24 @@ export default function TeacherDashboard() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 px-4 sm:px-0">
+    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       {isLoading ? (
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="relative">
-            <Loader2 className="w-14 h-14 animate-spin text-orange-500" />
+            <Loader2 className="w-12 h-12 animate-spin text-orange-500" />
             <div className="absolute inset-0 blur-xl bg-orange-500/20 rounded-full animate-pulse"></div>
           </div>
         </div>
       ) : (
         <>
-          <div className="mb-10 flex flex-col gap-3">
-            <h1 className="text-4xl font-black tracking-tighter text-gray-950">
-              {activeSection === "dashboard" ? "Trung tâm Giảng dạy" : 
-               activeSection === "students" ? "Danh sách Học viên" :
-               activeSection === "lessons" ? "Kho Bài giảng" :
-               activeSection === "lessonDetail" ? "Chi tiết nội dung" : "Phản hồi học viên"}
-            </h1>
-          </div>
-          <div className="pb-24">
-            {activeSection === "dashboard" && renderDashboard()}
-            {activeSection === "students" && renderStudents()}
-            {activeSection === "lessons" && renderLessons()}
-            {activeSection === "lessonDetail" && renderLessonDetail(selectedLesson)}
-            {activeSection === "feedback" && renderFeedback()}
+          <div className="pt-6">
+            <div className="pb-16">
+              {activeSection === "dashboard" && renderDashboard()}
+              {activeSection === "students" && renderStudents()}
+              {activeSection === "lessons" && renderLessons()}
+              {activeSection === "lessonDetail" && renderLessonDetail(selectedLesson)}
+              {activeSection === "feedback" && renderFeedback()}
+            </div>
           </div>
         </>
       )}

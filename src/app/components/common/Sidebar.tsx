@@ -7,12 +7,12 @@ import {
   MessageSquare, 
   LayoutDashboard, 
   Users, 
-  ChevronRight,
   GraduationCap,
   PanelLeftClose,
   PanelLeftOpen,
   FileText,
-  Users2
+  Users2,
+  Info
 } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 import { Button } from "../ui/button";
@@ -56,8 +56,10 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const commonItems = [
     { id: "home", label: "Trang chủ", icon: Home, path: "/" },
     { id: "courses", label: "Khóa học", icon: BookOpen, path: "/courses" },
+    { id: "teachers", label: "Giảng viên", icon: GraduationCap, path: "/teachers" },
     { id: "news", label: "Tin tức", icon: Newspaper, path: "/news" },
     { id: "feedback", label: "Feedback", icon: MessageSquare, path: "/feedback" },
+    { id: "about", label: "Về chúng tôi", icon: Info, path: "/about" },
   ];
 
   const dashboardItems: Record<string, any[]> = {
@@ -66,11 +68,13 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       { id: "admin-users", label: "Người dùng", icon: Users, path: "/admin?section=users" },
       { id: "admin-courses", label: "Khóa học", icon: BookOpen, path: "/admin?section=courses" },
       { id: "admin-news", label: "Tin tức", icon: Newspaper, path: "/admin?section=news" },
+      { id: "admin-feedback", label: "Feedback", icon: MessageSquare, path: "/admin?section=feedback" },
     ],
     TEACHER: [
       { id: "teacher-dash", label: "Tổng quan", icon: LayoutDashboard, path: "/teacher" },
       { id: "teacher-students", label: "Học sinh", icon: Users2, path: "/teacher?section=students" },
       { id: "teacher-lessons", label: "Bài giảng", icon: FileText, path: "/teacher?section=lessons" },
+      { id: "teacher-feedback", label: "Feedback", icon: MessageSquare, path: "/teacher?section=feedback" },
     ],
     STUDENT: [
       { id: "student-dash", label: "Dashboard", icon: LayoutDashboard, path: "/student" },
@@ -90,48 +94,47 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
   return (
     <aside 
-      className={`sticky top-0 h-screen flex flex-col transition-all duration-300 z-40 border-r bg-white border-gray-100 ${isCollapsed ? "w-20" : "w-72"}`}
+      className={`sticky top-0 h-screen flex flex-col transition-all duration-300 z-40 border-r bg-white border-border ${isCollapsed ? "w-[72px]" : "w-[260px]"}`}
     >
       {/* Brand Header */}
-      <div className="h-20 flex items-center px-6 border-b border-gray-50">
-        <Link to="/" className="flex items-center gap-3 overflow-hidden">
-           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-100">
-              <GraduationCap className="h-7 w-7" />
+      <div className="h-16 flex items-center px-5">
+        <Link to="/" className="flex items-center gap-2.5 overflow-hidden">
+           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FF6B00] text-white">
+              <GraduationCap className="h-6 w-6" />
            </div>
            {!isCollapsed && (
              <div className="flex flex-col leading-tight">
-                <span className="text-xl font-black tracking-tighter text-gray-900">
+                <span className="text-lg font-black tracking-tighter text-[#0F172A]">
                   EduSmart
                 </span>
-                <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest">
-                  Khám phá thế giới sinh học
+                <span className="text-[9px] font-bold text-[#FF6B00] uppercase tracking-wider">
+                  Biology Expert
                 </span>
              </div>
            )}
         </Link>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-8 px-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
         {/* Navigation Section */}
-        <div className="mb-10">
-           {!isCollapsed && <p className="px-4 mb-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Khám phá</p>}
-           <div className="space-y-1.5">
+        <div className="mb-8">
+           {!isCollapsed && <p className="px-4 mb-3 text-[11px] font-bold text-[#98A2B3] uppercase tracking-widest">Khám phá</p>}
+           <div className="space-y-1">
              {commonItems.map((item) => (
                <Link key={item.id} to={item.path}>
-                 <Button 
-                   variant="ghost" 
-                   className={`w-full justify-start gap-3 rounded-2xl py-6 px-4 font-bold transition-all relative group ${
+                 <div 
+                   className={`h-[44px] flex items-center gap-3 rounded-lg px-3 font-bold transition-all relative group cursor-pointer ${
                      isActive(item.path) 
-                     ? "bg-orange-50/80 text-orange-600" 
-                     : "text-gray-500 hover:text-orange-600 hover:bg-orange-50/30"
+                     ? "bg-[#FFF4EC] text-[#FF6B00]" 
+                     : "text-[#667085] hover:bg-[#F8F9FB] hover:text-[#0F172A]"
                    }`}
                  >
-                   <item.icon className={`h-5 w-5 ${isActive(item.path) ? "text-orange-600" : "text-gray-400 group-hover:text-orange-600 transition-colors"}`} />
-                   {!isCollapsed && <span>{item.label}</span>}
-                   {isActive(item.path) && (
-                     <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-orange-600 rounded-l-full shadow-[0_0_15px_rgba(234,88,12,0.5)]" />
+                   <item.icon className={`h-4.5 w-4.5 ${isActive(item.path) ? "text-[#FF6B00]" : "text-[#98A2B3] group-hover:text-[#0F172A]"}`} />
+                   {!isCollapsed && <span className="text-xs">{item.label}</span>}
+                   {isActive(item.path) && !isCollapsed && (
+                     <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-[24px] bg-[#FF6B00] rounded-l-full" />
                    )}
-                 </Button>
+                 </div>
                </Link>
              ))}
            </div>
@@ -139,21 +142,23 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
         {/* Dashboard Section */}
         <div>
-           {!isCollapsed && <p className="px-4 mb-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Quản trị</p>}
-           <div className="space-y-1.5">
+           {!isCollapsed && <p className="px-4 mb-4 text-[12px] font-bold text-[#98A2B3] uppercase tracking-[0.08em]">Quản trị</p>}
+           <div className="space-y-1">
              {currentRoleDashboardItems.map((item) => (
                <Link key={item.id} to={item.path}>
-                 <Button 
-                   variant="ghost" 
-                   className={`w-full justify-start gap-3 rounded-2xl py-6 px-4 font-bold transition-all ${
-                     isActive(item.path)
-                     ? "bg-orange-600 text-white shadow-xl shadow-orange-100" 
-                     : "text-gray-500 hover:text-orange-600 hover:bg-orange-50/30"
+                 <div 
+                   className={`h-[52px] flex items-center gap-3 rounded-[16px] px-4 font-bold transition-all relative group cursor-pointer ${
+                     isActive(item.path) 
+                     ? "bg-[#FFF4EC] text-[#FF6B00]" 
+                     : "text-[#667085] hover:bg-[#F8F9FB] hover:text-[#0F172A]"
                    }`}
                  >
-                   <item.icon className={`h-5 w-5 ${isActive(item.path) ? "text-white" : "text-gray-400"}`} />
-                   {!isCollapsed && <span>{item.label}</span>}
-                 </Button>
+                   <item.icon className={`h-5 w-5 ${isActive(item.path) ? "text-[#FF6B00]" : "text-[#98A2B3] group-hover:text-[#0F172A]"}`} />
+                   {!isCollapsed && <span className="text-sm">{item.label}</span>}
+                   {isActive(item.path) && !isCollapsed && (
+                     <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[4px] h-[32px] bg-[#FF6B00] rounded-l-full" />
+                   )}
+                 </div>
                </Link>
              ))}
            </div>
@@ -161,13 +166,14 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Footer / Collapse Toggle */}
-      <div className="p-4 border-t border-gray-50">
+      <div className="p-3 border-t border-border">
         <Button 
           variant="ghost" 
-          className="w-full justify-center lg:justify-start gap-3 rounded-2xl py-6 text-gray-400 hover:text-orange-600 hover:bg-orange-50/30"
+          className="w-full justify-center lg:justify-start gap-3 rounded-lg h-[44px] text-[#98A2B3] hover:bg-[#F8F9FB] hover:text-[#0F172A]"
           onClick={onToggle}
         >
-          {isCollapsed ? <PanelLeftOpen className="h-6 w-6" /> : <PanelLeftClose className="h-6 w-6" />}
+          {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+          {!isCollapsed && <span className="text-xs font-bold">Thu gọn</span>}
         </Button>
       </div>
     </aside>

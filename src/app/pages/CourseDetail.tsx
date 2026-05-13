@@ -83,46 +83,40 @@ export default function CourseDetail() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen pb-20 relative">
+    <div className="bg-[#F8F9FB] min-h-screen pb-16 relative">
       {/* Header section with accent */}
-      <div className="bg-white border-b border-gray-200 pt-8 pb-12 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4">
-          <Link to="/courses" className="inline-flex items-center gap-2 text-gray-500 hover:text-orange-600 transition-colors mb-6 font-medium group">
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            Quay lại danh sách
-          </Link>
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-white border-b border-border pt-6 pb-8 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex-1">
-              <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
+              <span className="inline-block px-2 py-0.5 bg-orange-50 text-orange-700 rounded-md text-[10px] font-bold uppercase tracking-wider mb-2 border border-orange-100">
                 Khóa học tiêu biểu
               </span>
-              <h1 className="text-4xl font-black text-gray-900 leading-tight mb-4">
+              <h1 className="text-2xl font-bold text-[#0F172A] leading-tight mb-3">
                 {course.title}
               </h1>
               
-              <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-[#667085]">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center font-bold">
+                  <div className="w-7 h-7 bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-[10px]">
                     {course.creatorName.charAt(0)}
                   </div>
-                  <span className="font-semibold text-gray-900">{course.creatorName}</span>
+                  <span className="font-bold text-[#0F172A]">{course.creatorName}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  <span>Cập nhật: {new Date(course.createdAt).toLocaleDateString("vi-VN")}</span>
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{new Date(course.createdAt).toLocaleDateString("vi-VN")}</span>
                 </div>
               </div>
             </div>
             
             {!isLoggedIn && (
-              <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 shrink-0">
-                <div className="text-center mb-4">
-                  <span className="text-3xl font-black text-orange-600">Miễn phí</span>
+              <div className="bg-[#FFF4EC] p-5 rounded-xl border border-[#FF6B00]/10 shrink-0">
+                <div className="text-center mb-3">
+                  <span className="text-2xl font-bold text-[#FF6B00]">Miễn phí</span>
                 </div>
                 <Link
                   to="/signup"
-                  className="block w-full text-center px-8 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-200"
+                  className="block w-full text-center px-6 py-2.5 bg-[#FF6B00] text-white rounded-lg font-bold text-xs hover:bg-[#E65F00] transition-all shadow-md"
                 >
                   Đăng ký học ngay
                 </Link>
@@ -130,11 +124,10 @@ export default function CourseDetail() {
             )}
           </div>
         </div>
-      </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+      <div className="w-full px-4 mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
           {/* Giới thiệu */}
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
             <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
