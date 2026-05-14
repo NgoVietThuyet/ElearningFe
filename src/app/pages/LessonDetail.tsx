@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Download, FileText, Loader2, Video } from "lucide-react";
+import { ArrowLeft, Download, FileText, FileType2, Loader2, Video } from "lucide-react";
 import { studentApi } from "../api/studentApi";
 
 interface LessonDetailData {
@@ -11,11 +11,13 @@ interface LessonDetailData {
   description: string;
   videoUrl?: string | null;
   pdfUrl?: string | null;
+  documentUrl?: string | null;
+  documentName?: string | null;
 }
 
 interface Resource {
   id: string;
-  type: "video" | "pdf";
+  type: "video" | "pdf" | "doc";
   name: string;
   url: string;
 }
@@ -49,20 +51,13 @@ export default function LessonDetail() {
 
     return [
       lesson.videoUrl
-        ? {
-            id: "video",
-            type: "video" as const,
-            name: `${lesson.title} - Video`,
-            url: lesson.videoUrl,
-          }
+        ? { id: "video", type: "video", name: `${lesson.title} - Video`, url: lesson.videoUrl }
         : null,
       lesson.pdfUrl
-        ? {
-            id: "pdf",
-            type: "pdf" as const,
-            name: `${lesson.title} - Tài liệu PDF`,
-            url: lesson.pdfUrl,
-          }
+        ? { id: "pdf", type: "pdf", name: `${lesson.title} - Tai lieu PDF`, url: lesson.pdfUrl }
+        : null,
+      lesson.documentUrl
+        ? { id: "doc", type: "doc", name: lesson.documentName || `${lesson.title} - Tai lieu Word`, url: lesson.documentUrl }
         : null,
     ].filter(Boolean) as Resource[];
   }, [lesson]);
@@ -86,9 +81,9 @@ export default function LessonDetail() {
       <div className="flex min-h-[70vh] items-center justify-center px-4 text-center">
         <div>
           <FileText className="mx-auto mb-4 h-12 w-12 text-slate-300" />
-          <h1 className="text-2xl font-black text-[#101828]">Không tìm thấy bài học</h1>
+          <h1 className="text-2xl font-black text-[#101828]">Khong tim thay bai hoc</h1>
           <button onClick={() => navigate(-1)} className="mt-5 rounded-lg bg-orange-600 px-5 py-2 text-sm font-bold text-white">
-            Quay lại
+            Quay lai
           </button>
         </div>
       </div>
@@ -99,12 +94,9 @@ export default function LessonDetail() {
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900"
-          >
+          <button onClick={() => navigate(-1)} className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900">
             <ArrowLeft className="h-5 w-5" />
-            Quay lại
+            Quay lai
           </button>
           <p className="mb-2 text-xs font-black uppercase tracking-widest text-orange-600">{lesson.courseTitle}</p>
           <h1 className="text-3xl font-black tracking-tight text-gray-900">{lesson.title}</h1>
@@ -130,8 +122,12 @@ export default function LessonDetail() {
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
                         <div className="text-center">
-                          <FileText className="mx-auto mb-4 h-16 w-16 text-gray-400" />
-                          <p className="text-gray-600">Tài liệu PDF</p>
+                          {selectedResource.type === "pdf" ? (
+                            <FileText className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+                          ) : (
+                            <FileType2 className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+                          )}
+                          <p className="text-gray-600">{selectedResource.type === "pdf" ? "Tai lieu PDF" : "Tai lieu Word"}</p>
                           <a
                             href={selectedResource.url}
                             target="_blank"
@@ -139,7 +135,7 @@ export default function LessonDetail() {
                             className="mx-auto mt-4 flex w-fit items-center gap-2 rounded-lg bg-orange-600 px-6 py-2 text-white hover:bg-orange-700"
                           >
                             <Download className="h-4 w-4" />
-                            Mở tài liệu
+                            Mo tai lieu
                           </a>
                         </div>
                       </div>
@@ -152,7 +148,7 @@ export default function LessonDetail() {
                     <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-md">
                       <FileText className="h-10 w-10 text-orange-600" />
                     </div>
-                    <p className="text-gray-600">Bài học này chưa có video hoặc PDF.</p>
+                    <p className="text-gray-600">Bai hoc nay chua co hoc lieu.</p>
                   </div>
                 </div>
               )}
@@ -162,7 +158,7 @@ export default function LessonDetail() {
           <div>
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
               <div className="border-b border-gray-200 p-6">
-                <h2 className="text-xl font-black text-gray-900">Tài liệu học tập</h2>
+                <h2 className="text-xl font-black text-gray-900">Tai lieu hoc tap</h2>
               </div>
               <div className="space-y-2 p-4">
                 {resources.length > 0 ? (
@@ -176,26 +172,34 @@ export default function LessonDetail() {
                           : "border-gray-200 hover:border-orange-200 hover:bg-gray-50"
                       }`}
                     >
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${resource.type === "video" ? "bg-red-100" : "bg-blue-100"}`}>
-                        {resource.type === "video" ? <Video className="h-5 w-5 text-red-600" /> : <FileText className="h-5 w-5 text-blue-600" />}
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                        resource.type === "video" ? "bg-red-100" : resource.type === "pdf" ? "bg-blue-100" : "bg-amber-100"
+                      }`}>
+                        {resource.type === "video" ? (
+                          <Video className="h-5 w-5 text-red-600" />
+                        ) : resource.type === "pdf" ? (
+                          <FileText className="h-5 w-5 text-blue-600" />
+                        ) : (
+                          <FileType2 className="h-5 w-5 text-amber-600" />
+                        )}
                       </div>
                       <div className="flex-1 text-left">
                         <p className="text-sm font-bold text-gray-900">{resource.name}</p>
-                        <p className="text-xs text-gray-500">{resource.type === "video" ? "Video" : "PDF"}</p>
+                        <p className="text-xs text-gray-500">{resource.type === "video" ? "Video" : resource.type === "pdf" ? "PDF" : "Word"}</p>
                       </div>
                     </button>
                   ))
                 ) : (
-                  <p className="py-6 text-center text-sm font-medium text-gray-400">Chưa có tài liệu.</p>
+                  <p className="py-6 text-center text-sm font-medium text-gray-400">Chua co tai lieu.</p>
                 )}
               </div>
             </div>
 
             <div className="mt-6 rounded-xl border border-orange-200 bg-orange-50 p-6">
-              <h3 className="mb-3 font-black text-gray-900">Hoàn thành bài học</h3>
-              <p className="mb-4 text-sm text-gray-600">Sau khi học xong, quay lại dashboard để tiếp tục bài học tiếp theo.</p>
+              <h3 className="mb-3 font-black text-gray-900">Hoan thanh bai hoc</h3>
+              <p className="mb-4 text-sm text-gray-600">Sau khi hoc xong, quay lai dashboard de tiep tuc bai hoc tiep theo.</p>
               <button onClick={() => navigate("/student")} className="w-full rounded-lg bg-orange-600 px-4 py-2 text-white hover:bg-orange-700">
-                Về dashboard
+                Ve dashboard
               </button>
             </div>
           </div>

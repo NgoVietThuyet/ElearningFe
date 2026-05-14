@@ -1,24 +1,40 @@
-import { useParams, Link } from "react-router";
-import { useState, useEffect } from "react";
-import { publicApi } from "../api/publicApi";
-import { 
-  Loader2, 
-  ArrowLeft, 
-  BookOpen, 
-  Users, 
-  Calendar, 
-  GraduationCap, 
-  Video, 
-  FileText, 
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router";
+import { jwtDecode } from "jwt-decode";
+import {
+  ArrowRight,
+  BookOpen,
+  Calendar,
+  CalendarDays,
+  CheckCircle2,
+  CirclePlay,
+  Clock3,
+  FileText,
+  FileType2,
+  GraduationCap,
+  Layers3,
+  Loader2,
+  Play,
+  Plus,
+  Sparkles,
+  Upload,
+  UserRound,
+  Users,
   X,
-  User
 } from "lucide-react";
+import { publicApi } from "../api/publicApi";
+import { adminApi } from "../api/adminApi";
+import { teacherApi } from "../api/teacherApi";
+import { toast } from "sonner";
 
 interface Lesson {
   id: number;
   title: string;
-  videoUrl: string;
-  pdfUrl: string;
+  description?: string;
+  videoUrl?: string | null;
+  pdfUrl?: string | null;
+  documentUrl?: string | null;
+  documentName?: string | null;
 }
 
 interface Student {
@@ -28,264 +44,657 @@ interface Student {
   enrolledAt: string;
 }
 
-interface CourseDetail {
+interface CourseDetailData {
   id: number;
   title: string;
   description: string;
+  avatarUrl?: string | null;
+  code?: string;
+  introVideoUrl?: string | null;
+  status?: string;
+  language?: string;
+  durationMinutes?: number;
+  expectedStudentCount?: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  learningOutcomes?: string;
   creatorName: string;
+  teacherId?: number | null;
+  teacherName?: string;
+  teacherAvatarUrl?: string | null;
   lessonCount: number;
   studentCount: number;
+  averageProgress?: number;
   createdAt: string;
   lessons: Lesson[];
   students: Student[];
 }
 
+type TabKey = "overview" | "lessons" | "resources" | "students";
+type AppRole = "ADMIN" | "TEACHER" | "STUDENT" | null;
+
+interface LessonFormState {
+  title: string;
+  description: string;
+  videoUrl: string;
+  pdfFile: File | null;
+  documentFile: File | null;
+}
+
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "Chua cap nhat";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Chua cap nhat";
+  return date.toLocaleDateString("vi-VN");
+}
+
+function formatDuration(minutes?: number) {
+  if (!minutes || minutes <= 0) return "Chua cap nhat";
+  const hours = Math.floor(minutes / 60);
+  const remain = minutes % 60;
+  if (!hours) return `${remain} phut`;
+  if (!remain) return `${hours} gio`;
+  return `${hours} gio ${remain} phut`;
+}
+
+function formatNumber(value?: number) {
+  return new Intl.NumberFormat("vi-VN").format(value || 0);
+}
+
+function getInitials(name?: string) {
+  const safe = (name || "EduSmart").trim();
+  const parts = safe.split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function normalizeOutcomes(raw?: string) {
+  if (!raw) return [];
+  return Array.from(
+    new Set(
+      raw
+        .split(/\r?\n|•|;|\|/)
+        .map((item) => stripHtml(item).trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function getRoleFromToken(token: string | null): AppRole {
+  if (!token) return null;
+  try {
+    const decoded = jwtDecode<Record<string, string>>(token);
+    return (decoded.role || decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || null) as AppRole;
+  } catch {
+    return null;
+  }
+}
+
+function makeAbsoluteUrl(url?: string | null) {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${window.location.origin}${url}`;
+}
+
+function CourseHeroImage({ course }: { course: CourseDetailData }) {
+  if (course.avatarUrl) {
+    return <img src={course.avatarUrl} alt={course.title} className="absolute inset-0 h-full w-full object-cover" />;
+  }
+
+  return (
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(163,230,53,0.28),_transparent_30%),linear-gradient(135deg,#0a402b_0%,#0d6a44_50%,#6ea90b_100%)]" />
+  );
+}
+
 export default function CourseDetail() {
   const { id } = useParams<{ id: string }>();
-  const [course, setCourse] = useState<CourseDetail | null>(null);
+  const [course, setCourse] = useState<CourseDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showStudentModal, setShowStudentModal] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [role, setRole] = useState<AppRole>(null);
+  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
+  const [isSavingLesson, setIsSavingLesson] = useState(false);
+  const [lessonForm, setLessonForm] = useState<LessonFormState>({
+    title: "",
+    description: "",
+    videoUrl: "",
+    pdfFile: null,
+    documentFile: null,
+  });
+
+  const fetchCourse = async (courseId: string) => {
+    const res = await publicApi.getCourseById(courseId);
+    setCourse(res.data);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
+    setRole(getRoleFromToken(token));
 
-    if (!id) return;
-    const fetchCourse = async () => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    const load = async () => {
       try {
-        const res = await publicApi.getCourseById(id);
-        setCourse(res.data);
+        await fetchCourse(id);
       } catch (err) {
         console.error("Failed to load course detail", err);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchCourse();
+
+    load();
   }, [id]);
+
+  const canManageLessons = role === "ADMIN" || role === "TEACHER";
+  const isLoggedIn = !!role;
+  const outcomes = useMemo(() => normalizeOutcomes(course?.learningOutcomes), [course?.learningOutcomes]);
+  const descriptionText = useMemo(() => stripHtml(course?.description || ""), [course?.description]);
+  const resourceCount = useMemo(() => {
+    if (!course) return 0;
+    return course.lessons.reduce(
+      (total, lesson) => total + (lesson.videoUrl ? 1 : 0) + (lesson.pdfUrl ? 1 : 0) + (lesson.documentUrl ? 1 : 0),
+      0,
+    );
+  }, [course]);
+  const teacherName = course?.teacherName?.trim() || course?.creatorName || "EduSmart";
+  const progress = Math.max(0, Math.min(100, Math.round(Number(course?.averageProgress || 0))));
+  const previewVideoUrl = lessonForm.videoUrl.trim();
+  const previewPdfName = lessonForm.pdfFile?.name;
+  const previewDocName = lessonForm.documentFile?.name;
+
+  const resetLessonForm = () => {
+    setLessonForm({
+      title: "",
+      description: "",
+      videoUrl: "",
+      pdfFile: null,
+      documentFile: null,
+    });
+  };
+
+  const submitLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!course) return;
+
+    try {
+      setIsSavingLesson(true);
+      const payload = {
+        courseId: course.id,
+        title: lessonForm.title,
+        description: lessonForm.description,
+        videoUrl: lessonForm.videoUrl,
+        pdfFile: lessonForm.pdfFile,
+        documentFile: lessonForm.documentFile,
+        documentName: lessonForm.documentFile?.name || "",
+      };
+
+      if (role === "ADMIN") {
+        await adminApi.createLesson(payload);
+      } else if (role === "TEACHER") {
+        await teacherApi.createLesson(payload);
+      }
+
+      await fetchCourse(String(course.id));
+      toast.success("Da them bai hoc");
+      setIsLessonModalOpen(false);
+      resetLessonForm();
+      setActiveTab("lessons");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Khong the tao bai hoc");
+    } finally {
+      setIsSavingLesson(false);
+    }
+  };
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-[#FF5A1F]" />
       </div>
     );
   }
 
   if (!course) {
     return (
-      <div className="max-w-4xl mx-auto py-20 px-4 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Không tìm thấy khóa học</h2>
-        <Link to="/courses" className="text-orange-600 font-bold hover:underline">Quay lại danh sách</Link>
+      <div className="mx-auto max-w-4xl px-6 py-20 text-center">
+        <h2 className="text-3xl font-black text-[#0F172A]">Khong tim thay khoa hoc</h2>
+        <p className="mt-3 text-sm font-medium text-slate-500">Khoa hoc nay khong ton tai hoac da bi an.</p>
+        <Link to="/courses" className="mt-6 inline-flex h-12 items-center rounded-xl bg-[#FF5A1F] px-6 text-sm font-black text-white">
+          Quay lai danh sach
+        </Link>
       </div>
     );
   }
 
+  const tabs: Array<{ id: TabKey; label: string; count: number | null }> = [
+    { id: "overview", label: "Tong quan", count: null },
+    { id: "lessons", label: "Noi dung khoa hoc", count: course.lessons.length },
+    { id: "resources", label: "Tai lieu", count: resourceCount },
+    { id: "students", label: "Hoc vien", count: course.students.length || course.studentCount },
+  ];
+
   return (
-    <div className="bg-[#F8F9FB] min-h-screen pb-16 relative">
-      {/* Header section with accent */}
-      <div className="bg-white border-b border-border pt-6 pb-8 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex-1">
-              <span className="inline-block px-2 py-0.5 bg-orange-50 text-orange-700 rounded-md text-[10px] font-bold uppercase tracking-wider mb-2 border border-orange-100">
-                Khóa học tiêu biểu
-              </span>
-              <h1 className="text-2xl font-bold text-[#0F172A] leading-tight mb-3">
-                {course.title}
-              </h1>
-              
-              <div className="flex flex-wrap items-center gap-4 text-xs text-[#667085]">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-[10px]">
-                    {course.creatorName.charAt(0)}
-                  </div>
-                  <span className="font-bold text-[#0F172A]">{course.creatorName}</span>
+    <div className="min-h-screen bg-[#FBFCFF]">
+      <div className="mx-auto max-w-[1500px] space-y-6 pb-10">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="relative min-h-[320px] overflow-hidden rounded-[28px] shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+            <CourseHeroImage course={course} />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#06120C]/80 via-[#0C1C15]/45 to-transparent" />
+            <div className="relative z-10 flex min-h-[320px] flex-col justify-between p-8 text-white lg:p-10">
+              <div className="flex items-start justify-between gap-4">
+                <span className="inline-flex w-fit items-center rounded-full bg-[#FF5A1F] px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-white">
+                  Khoa hoc noi bat
+                </span>
+                <div className="flex gap-3">
+                  {course.introVideoUrl && (
+                    <a href={course.introVideoUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 items-center gap-2 rounded-full bg-white/16 px-5 text-sm font-black text-white backdrop-blur-md transition hover:bg-white/24">
+                      <Play className="h-4 w-4" />
+                      Xem demo
+                    </a>
+                  )}
+                  <Link to={isLoggedIn ? "/student" : "/login"} className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-[#FF5A1F] shadow-lg">
+                    {isLoggedIn ? "Tiep tuc hoc" : "Dang nhap"}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>{new Date(course.createdAt).toLocaleDateString("vi-VN")}</span>
+              </div>
+
+              <div>
+                <h1 className="max-w-2xl text-4xl font-black tracking-tight lg:text-5xl">{course.title}</h1>
+                <p className="mt-4 max-w-2xl text-sm font-medium leading-7 text-white/90">
+                  {descriptionText || "Khoa hoc dang duoc cap nhat mo ta chi tiet."}
+                </p>
+                <div className="mt-8 flex flex-wrap items-center gap-5">
+                  <div className="flex -space-x-3">
+                    {[teacherName, course.creatorName, course.title].map((name, index) => (
+                      <div key={`${name}-${index}`} className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#FFF4EC] text-xs font-black text-[#FF5A1F]">
+                        {getInitials(name)}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-sm font-bold text-white/95">{formatNumber(course.studentCount)} hoc vien dang theo doi khoa hoc nay</div>
                 </div>
               </div>
             </div>
-            
-            {!isLoggedIn && (
-              <div className="bg-[#FFF4EC] p-5 rounded-xl border border-[#FF6B00]/10 shrink-0">
-                <div className="text-center mb-3">
-                  <span className="text-2xl font-bold text-[#FF6B00]">Miễn phí</span>
+          </section>
+
+          <aside className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+            <div className="space-y-1">
+              {[
+                { icon: UserRound, label: "Giang vien", value: teacherName },
+                { icon: Calendar, label: "Ngay bat dau", value: formatDate(course.startDate) },
+                { icon: CalendarDays, label: "Ngay ket thuc", value: formatDate(course.endDate) },
+                { icon: Clock3, label: "Thoi luong", value: formatDuration(course.durationMinutes) },
+                { icon: Users, label: "Hoc vien", value: `${formatNumber(course.studentCount)} hoc vien` },
+                { icon: BookOpen, label: "Ma khoa hoc", value: course.code || "Chua cap nhat" },
+                { icon: Sparkles, label: "Ngon ngu", value: course.language || "Tieng Viet" },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between gap-4 border-b border-[#EEF2F6] py-4 last:border-b-0">
+                  <div className="flex items-center gap-3 text-sm font-semibold text-[#667085]">
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.label}</span>
+                  </div>
+                  <div className="max-w-[160px] text-right text-sm font-black text-[#0F172A]">{item.value}</div>
                 </div>
-                <Link
-                  to="/signup"
-                  className="block w-full text-center px-6 py-2.5 bg-[#FF6B00] text-white rounded-lg font-bold text-xs hover:bg-[#E65F00] transition-all shadow-md"
-                >
-                  Đăng ký học ngay
-                </Link>
+              ))}
+            </div>
+
+            <div className="pt-5">
+              <div className="mb-3 flex items-center justify-between text-sm font-bold">
+                <span className="text-[#667085]">Tien do khoa hoc</span>
+                <span className="text-[#FF5A1F]">{progress}% hoan thanh</span>
               </div>
+              <div className="h-2.5 rounded-full bg-[#EEF2F6]">
+                <div className="h-full rounded-full bg-[#FF5A1F]" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <div className="flex overflow-x-auto rounded-[24px] border border-[#E8EDF5] bg-white px-3 shadow-sm">
+          {tabs.map((tab) => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative flex min-w-fit items-center gap-3 px-5 py-5 text-sm font-black transition ${activeTab === tab.id ? "text-[#FF5A1F]" : "text-[#667085]"}`}>
+              <span>{tab.label}</span>
+              {tab.count !== null && <span className={`rounded-full px-2.5 py-1 text-xs ${activeTab === tab.id ? "bg-[#FFF1EB] text-[#FF5A1F]" : "bg-[#F2F5F9] text-[#475569]"}`}>{tab.count}</span>}
+              {activeTab === tab.id && <span className="absolute bottom-0 left-5 right-5 h-0.5 rounded-full bg-[#FF5A1F]" />}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="space-y-6">
+            {(activeTab === "overview" || activeTab === "lessons") && (
+              <section className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 shadow-sm">
+                <div className="mb-5 flex items-center justify-between gap-4">
+                  <h2 className="flex items-center gap-3 text-2xl font-black text-[#0F172A]">
+                    <GraduationCap className="h-6 w-6 text-[#FF5A1F]" />
+                    Noi dung khoa hoc
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-[#FFF4EC] px-3 py-1 text-xs font-black text-[#FF5A1F]">{course.lessons.length} bai hoc</span>
+                    {canManageLessons && (
+                      <button onClick={() => setIsLessonModalOpen(true)} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#FF5A1F] px-4 text-sm font-black text-white shadow-lg shadow-orange-500/20">
+                        <Plus className="h-4 w-4" />
+                        Them bai hoc
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-[22px] border border-[#E8EDF5]">
+                  {course.lessons.length ? (
+                    course.lessons.map((lesson, index) => (
+                      <div key={lesson.id} className={`border-b border-[#E8EDF5] p-5 last:border-b-0 ${index === 0 ? "bg-[#FFF7F2]" : "bg-white"}`}>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-4">
+                            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#FF5A1F] shadow-sm">
+                              <CirclePlay className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-black text-[#0F172A]">Bai {index + 1}. {lesson.title}</p>
+                              <p className="mt-1 text-xs font-semibold leading-6 text-[#667085]">{lesson.description || "Bai hoc dang duoc cap nhat mo ta chi tiet."}</p>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {lesson.videoUrl && <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-xs font-black text-red-600"><Play className="h-3.5 w-3.5" /> Video</span>}
+                                {lesson.pdfUrl && <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-600"><FileText className="h-3.5 w-3.5" /> PDF</span>}
+                                {lesson.documentUrl && <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-700"><FileType2 className="h-3.5 w-3.5" /> Word</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <Link to={`/lesson/${lesson.id}`} className="inline-flex h-10 items-center rounded-xl border border-[#D8DFEA] px-4 text-xs font-black text-[#0F172A] transition hover:bg-[#F8FAFC]">
+                            Xem bai hoc
+                          </Link>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-10 text-center text-sm font-semibold text-[#667085]">Chua co bai hoc nao trong khoa hoc nay.</div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {activeTab === "overview" && (
+              <section className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 shadow-sm">
+                <h2 className="flex items-center gap-3 text-2xl font-black text-[#0F172A]">
+                  <BookOpen className="h-6 w-6 text-[#FF5A1F]" />
+                  Gioi thieu khoa hoc
+                </h2>
+                <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
+                  <div>
+                    <p className="text-sm font-medium leading-7 text-[#3C4A5F]">{descriptionText || "Khoa hoc dang duoc cap nhat noi dung gioi thieu."}</p>
+                    <div className="mt-6 space-y-3">
+                      {(outcomes.length ? outcomes : ["He thong bai hoc ro rang", "Co video va tai lieu di kem", "Phu hop cho viec tu hoc va on luyen"]).map((item) => (
+                        <div key={item} className="flex items-start gap-3 text-sm font-semibold text-[#3C4A5F]">
+                          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-500" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center rounded-[24px] bg-gradient-to-br from-[#F0FDF4] via-[#FFF7ED] to-[#EFF6FF] p-6">
+                    <div className="grid h-48 w-48 place-items-center rounded-full bg-white/90 shadow-inner">
+                      <Layers3 className="h-24 w-24 text-[#22C55E]" />
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === "resources" && (
+              <section className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 shadow-sm">
+                <h2 className="text-2xl font-black text-[#0F172A]">Tai lieu va hoc lieu</h2>
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  {course.lessons.flatMap((lesson) => {
+                    const items = [];
+                    if (lesson.videoUrl) {
+                      items.push(
+                        <a key={`${lesson.id}-video`} href={lesson.videoUrl} target="_blank" rel="noreferrer" className="rounded-[22px] border border-[#E8EDF5] p-5 transition hover:-translate-y-0.5 hover:shadow-sm">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600"><Play className="h-5 w-5" /></div>
+                          <p className="mt-4 text-base font-black text-[#0F172A]">{lesson.title}</p>
+                          <p className="mt-2 text-sm font-medium text-[#667085]">Video bai giang</p>
+                        </a>,
+                      );
+                    }
+                    if (lesson.pdfUrl) {
+                      items.push(
+                        <a key={`${lesson.id}-pdf`} href={makeAbsoluteUrl(lesson.pdfUrl)} target="_blank" rel="noreferrer" className="rounded-[22px] border border-[#E8EDF5] p-5 transition hover:-translate-y-0.5 hover:shadow-sm">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><FileText className="h-5 w-5" /></div>
+                          <p className="mt-4 text-base font-black text-[#0F172A]">{lesson.title}</p>
+                          <p className="mt-2 text-sm font-medium text-[#667085]">Tai lieu PDF</p>
+                        </a>,
+                      );
+                    }
+                    if (lesson.documentUrl) {
+                      items.push(
+                        <a key={`${lesson.id}-doc`} href={makeAbsoluteUrl(lesson.documentUrl)} target="_blank" rel="noreferrer" className="rounded-[22px] border border-[#E8EDF5] p-5 transition hover:-translate-y-0.5 hover:shadow-sm">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700"><FileType2 className="h-5 w-5" /></div>
+                          <p className="mt-4 text-base font-black text-[#0F172A]">{lesson.title}</p>
+                          <p className="mt-2 text-sm font-medium text-[#667085]">{lesson.documentName || "Tai lieu Word"}</p>
+                        </a>,
+                      );
+                    }
+                    return items;
+                  }).length ? (
+                    course.lessons.flatMap((lesson) => {
+                      const items = [];
+                      if (lesson.videoUrl) items.push(<a key={`${lesson.id}-video`} href={lesson.videoUrl} target="_blank" rel="noreferrer" className="rounded-[22px] border border-[#E8EDF5] p-5 transition hover:-translate-y-0.5 hover:shadow-sm"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600"><Play className="h-5 w-5" /></div><p className="mt-4 text-base font-black text-[#0F172A]">{lesson.title}</p><p className="mt-2 text-sm font-medium text-[#667085]">Video bai giang</p></a>);
+                      if (lesson.pdfUrl) items.push(<a key={`${lesson.id}-pdf`} href={makeAbsoluteUrl(lesson.pdfUrl)} target="_blank" rel="noreferrer" className="rounded-[22px] border border-[#E8EDF5] p-5 transition hover:-translate-y-0.5 hover:shadow-sm"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><FileText className="h-5 w-5" /></div><p className="mt-4 text-base font-black text-[#0F172A]">{lesson.title}</p><p className="mt-2 text-sm font-medium text-[#667085]">Tai lieu PDF</p></a>);
+                      if (lesson.documentUrl) items.push(<a key={`${lesson.id}-doc`} href={makeAbsoluteUrl(lesson.documentUrl)} target="_blank" rel="noreferrer" className="rounded-[22px] border border-[#E8EDF5] p-5 transition hover:-translate-y-0.5 hover:shadow-sm"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700"><FileType2 className="h-5 w-5" /></div><p className="mt-4 text-base font-black text-[#0F172A]">{lesson.title}</p><p className="mt-2 text-sm font-medium text-[#667085]">{lesson.documentName || "Tai lieu Word"}</p></a>);
+                      return items;
+                    })
+                  ) : (
+                    <div className="col-span-full rounded-[22px] border border-dashed border-[#D8DFEA] bg-[#FBFCFE] p-10 text-center text-sm font-semibold text-[#667085]">
+                      Khoa hoc nay chua co tai lieu hoac video dinh kem.
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {activeTab === "students" && (
+              <section className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="text-2xl font-black text-[#0F172A]">Hoc vien tham gia</h2>
+                  <span className="rounded-full bg-[#F3F6FA] px-3 py-1 text-xs font-black text-[#475569]">{formatNumber(course.studentCount)} hoc vien</span>
+                </div>
+                <div className="mt-6 space-y-4">
+                  {course.students.length ? (
+                    course.students.map((student) => (
+                      <div key={student.id} className="flex items-center justify-between gap-4 rounded-[22px] border border-[#E8EDF5] p-5">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF4EC] text-sm font-black text-[#FF5A1F]">{getInitials(student.fullName)}</div>
+                          <div>
+                            <p className="text-sm font-black text-[#0F172A]">{student.fullName}</p>
+                            <p className="mt-1 text-sm font-medium text-[#667085]">{student.email}</p>
+                          </div>
+                        </div>
+                        <div className="text-right text-xs font-bold text-[#667085]">
+                          <p>Tham gia</p>
+                          <p className="mt-1 text-sm text-[#0F172A]">{formatDate(student.enrolledAt)}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-[22px] border border-dashed border-[#D8DFEA] bg-[#FBFCFE] p-10 text-center text-sm font-semibold text-[#667085]">Chua co danh sach hoc vien cong khai cho khoa hoc nay.</div>
+                  )}
+                </div>
+              </section>
             )}
           </div>
-        </div>
 
-      {/* Main Content */}
-      <div className="w-full px-4 mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Giới thiệu */}
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-orange-600" />
-              Giới thiệu khóa học
-            </h2>
-            
-            <div 
-              className="rich-content prose prose-orange max-w-none mb-8"
-              dangerouslySetInnerHTML={{ __html: course.description }}
-            />
-          </div>
-
-          {/* Danh sách bài giảng */}
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <GraduationCap className="w-6 h-6 text-orange-600" />
-              Nội dung bài giảng
-            </h2>
-            
-            <div className="space-y-3">
-              {course.lessons && course.lessons.length > 0 ? (
-                course.lessons.map((lesson, idx) => (
-                  <div key={lesson.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-50 hover:border-orange-200 hover:bg-orange-50/30 transition-all group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 group-hover:bg-white group-hover:text-orange-600 transition-all font-bold">
-                        {idx + 1}
-                      </div>
-                      <span className="font-bold text-gray-700 group-hover:text-gray-900">{lesson.title}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      {lesson.videoUrl ? (
-                        <a 
-                          href={lesson.videoUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors"
-                        >
-                          <Video className="w-3.5 h-3.5" /> Video
-                        </a>
-                      ) : (
-                        <span className="px-3 py-1.5 bg-gray-100 text-gray-400 rounded-lg text-xs font-bold cursor-not-allowed opacity-50">
-                          <Video className="w-3.5 h-3.5" /> Video
-                        </span>
-                      )}
-
-                      {lesson.pdfUrl ? (
-                        <a 
-                          href={lesson.pdfUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"
-                        >
-                          <FileText className="w-3.5 h-3.5" /> PDF
-                        </a>
-                      ) : (
-                        <span className="px-3 py-1.5 bg-gray-100 text-gray-400 rounded-lg text-xs font-bold cursor-not-allowed opacity-50">
-                          <FileText className="w-3.5 h-3.5" /> PDF
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
+          <div className="space-y-6">
+            <section className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 text-center shadow-sm">
+              {course.teacherAvatarUrl ? (
+                <img src={course.teacherAvatarUrl} alt={teacherName} className="mx-auto h-24 w-24 rounded-full object-cover" />
               ) : (
-                <p className="text-gray-500 italic text-center py-4">Chưa có bài giảng nào được cập nhật.</p>
+                <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#FFF4EC] text-2xl font-black text-[#FF5A1F]">{getInitials(teacherName)}</div>
               )}
-            </div>
+              <h3 className="mt-5 text-xl font-black text-[#0F172A]">{teacherName}</h3>
+              <p className="mt-1 text-sm font-semibold text-[#667085]">Giang vien phu trach khoa hoc</p>
+              <div className="mt-6 grid grid-cols-3 gap-3">
+                <div><p className="text-lg font-black text-[#0F172A]">{formatNumber(course.lessonCount)}</p><p className="text-xs font-semibold text-[#667085]">Bai hoc</p></div>
+                <div><p className="text-lg font-black text-[#0F172A]">{formatNumber(course.studentCount)}</p><p className="text-xs font-semibold text-[#667085]">Hoc vien</p></div>
+                <div><p className="text-lg font-black text-[#0F172A]">{progress}%</p><p className="text-xs font-semibold text-[#667085]">Tien do</p></div>
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 shadow-sm">
+              <h3 className="text-xl font-black text-[#0F172A]">Ban se nhan duoc</h3>
+              <div className="mt-5 space-y-4">
+                {[
+                  `${formatNumber(course.lessonCount)} bai hoc trong chuong trinh`,
+                  `${resourceCount} hoc lieu di kem tu video, PDF va Word`,
+                  `Mo ta chi tiet va muc tieu hoc tap ro rang`,
+                  `Theo doi tien do hoc tap theo du lieu khoa hoc`,
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-3 text-sm font-semibold text-[#3C4A5F]">
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-500" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-900 mb-6">Thông tin chi tiết</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-gray-50">
-                <div className="flex items-center gap-2 text-gray-500">
-                  <GraduationCap className="w-4 h-4" />
-                  <span>Trình độ</span>
-                </div>
-                <span className="font-bold text-gray-900">Mọi cấp độ</span>
+        <section className="rounded-[28px] border border-[#FFD8C7] bg-[linear-gradient(90deg,#FFF6F0_0%,#FFFFFF_55%,#FFF6F0_100%)] p-7 shadow-sm">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-[#FF5A1F] shadow-sm">
+                <GraduationCap className="h-8 w-8" />
               </div>
-              <div className="flex items-center justify-between py-3 border-b border-gray-50">
-                <div className="flex items-center gap-2 text-gray-500">
-                  <BookOpen className="w-4 h-4" />
-                  <span>Bài giảng</span>
-                </div>
-                <span className="font-bold text-gray-900">{course.lessonCount}</span>
-              </div>
-              <div 
-                className="flex items-center justify-between py-3 border-b border-gray-50 cursor-pointer hover:bg-orange-50 px-2 -mx-2 rounded-lg transition-colors group"
-                onClick={() => setShowStudentModal(true)}
-              >
-                <div className="flex items-center gap-2 text-gray-500 group-hover:text-orange-600">
-                  <Users className="w-4 h-4" />
-                  <span>Học viên</span>
-                </div>
-                <span className="font-bold text-gray-900 group-hover:text-orange-600">{course.studentCount}</span>
+              <div>
+                <h3 className="text-2xl font-black text-[#0F172A]">Ban da san sang bat dau chua?</h3>
+                <p className="mt-2 text-sm font-medium text-[#667085]">Truy cap khoa hoc moi luc, theo doi tien do va hoc bang chinh noi dung dang co trong he thong.</p>
               </div>
             </div>
+            <Link to={isLoggedIn ? "/student" : "/login"} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#FF5A1F] px-6 text-sm font-black text-white shadow-lg shadow-orange-500/20">
+              {isLoggedIn ? "Tiep tuc hoc ngay" : "Dang nhap de hoc"}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-
-          <div className="bg-gradient-to-br from-orange-600 to-orange-700 p-8 rounded-3xl text-white shadow-xl shadow-orange-200">
-            <h3 className="text-xl font-bold mb-4">Chứng chỉ hoàn thành</h3>
-            <p className="text-orange-100 text-sm mb-6 leading-relaxed">
-              Bạn sẽ nhận được chứng chỉ từ EduSmart sau khi hoàn thành tất cả các bài giảng và bài kiểm tra của khóa học này.
-            </p>
-            <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto border border-white/20">
-              <GraduationCap className="w-10 h-10" />
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
 
-      {/* Student List Modal */}
-      {showStudentModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowStudentModal(false)}></div>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-orange-600 text-white">
-              <div className="flex items-center gap-3">
-                <Users className="w-6 h-6" />
-                <h3 className="text-xl font-bold">Danh sách học viên</h3>
+      {isLessonModalOpen && canManageLessons && (
+        <div className="admin-modal-overlay fixed inset-0 z-[110] flex items-center justify-center p-5">
+          <div className="admin-modal-shell max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-[28px]">
+            <form onSubmit={submitLesson} className="flex max-h-[92vh] flex-col">
+              <div className="flex items-start justify-between border-b border-[#E6EAF0] px-8 py-6">
+                <div>
+                  <h2 className="text-3xl font-black text-[#0F172A]">Them bai hoc moi</h2>
+                  <p className="mt-2 text-sm font-medium text-[#667085]">Admin va teacher co the tao bai giang bang du lieu that cua he thong.</p>
+                </div>
+                <button type="button" onClick={() => { setIsLessonModalOpen(false); resetLessonForm(); }} className="rounded-xl p-2 text-[#667085] transition hover:bg-[#F8F9FB]">
+                  <X className="h-6 w-6" />
+                </button>
               </div>
-              <button onClick={() => setShowStudentModal(false)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="max-h-[60vh] overflow-y-auto p-6">
-              {course.students && course.students.length > 0 ? (
-                <div className="space-y-4">
-                  {course.students.map((student) => (
-                    <div key={student.id} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100 group hover:border-orange-200 transition-all">
-                      <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold text-lg shrink-0 group-hover:bg-orange-600 group-hover:text-white transition-all">
-                        {student.fullName.charAt(0)}
+
+              <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto p-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="admin-modal-panel rounded-[24px]">
+                  <div className="admin-modal-section">
+                    <h3 className="admin-modal-section-title">Thong tin bai hoc</h3>
+                    <div className="mt-6 grid gap-5">
+                      <div>
+                        <label className="admin-field-label">Tieu de bai hoc *</label>
+                        <input required value={lessonForm.title} onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })} className="admin-field-input" placeholder="Nhap tieu de bai hoc" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-900 truncate">{student.fullName}</p>
-                        <p className="text-sm text-gray-500 truncate">{student.email}</p>
+                      <div>
+                        <label className="admin-field-label">Mo ta</label>
+                        <textarea value={lessonForm.description} onChange={(e) => setLessonForm({ ...lessonForm, description: e.target.value })} className="admin-field-textarea" placeholder="Mo ta ngan ve bai giang" />
                       </div>
-                      <div className="shrink-0 text-[10px] text-gray-400 font-medium">
-                        {new Date(student.enrolledAt).toLocaleDateString("vi-VN")}
+                      <div>
+                        <label className="admin-field-label">Link video bai giang</label>
+                        <input value={lessonForm.videoUrl} onChange={(e) => setLessonForm({ ...lessonForm, videoUrl: e.target.value })} className="admin-field-input" placeholder="https://www.youtube.com/watch?v=..." />
                       </div>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="admin-modal-section">
+                    <h3 className="admin-modal-section-title">Tai lieu dinh kem</h3>
+                    <div className="mt-6 grid gap-5 md:grid-cols-2">
+                      <div>
+                        <label className="admin-field-label">Upload PDF</label>
+                        <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-[18px] border border-dashed border-[#D8DFEA] bg-[#FBFCFE] px-4 text-center transition hover:border-[#FF5A1F]">
+                          <Upload className="mb-3 h-6 w-6 text-[#98A2B3]" />
+                          <span className="text-sm font-black text-[#0F172A]">{previewPdfName || "Chon tep PDF"}</span>
+                          <span className="mt-1 text-xs font-medium text-[#667085]">Chi ho tro .pdf</span>
+                          <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={(e) => setLessonForm({ ...lessonForm, pdfFile: e.target.files?.[0] || null })} />
+                        </label>
+                      </div>
+                      <div>
+                        <label className="admin-field-label">Upload Word</label>
+                        <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-[18px] border border-dashed border-[#D8DFEA] bg-[#FBFCFE] px-4 text-center transition hover:border-[#FF5A1F]">
+                          <Upload className="mb-3 h-6 w-6 text-[#98A2B3]" />
+                          <span className="text-sm font-black text-[#0F172A]">{previewDocName || "Chon tep Word"}</span>
+                          <span className="mt-1 text-xs font-medium text-[#667085]">Chi ho tro .doc, .docx</span>
+                          <input type="file" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={(e) => setLessonForm({ ...lessonForm, documentFile: e.target.files?.[0] || null })} />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <User className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  <p>Chưa có học viên nào tham gia khóa học này.</p>
-                </div>
-              )}
-            </div>
-            
-            <div className="p-6 bg-gray-50 text-center">
-              <p className="text-sm text-gray-500">Tổng cộng: <span className="font-bold text-orange-600">{course.studentCount}</span> học viên</p>
-            </div>
+
+                <aside className="admin-modal-panel rounded-[24px] p-6">
+                  <p className="text-sm font-black uppercase tracking-[0.14em] text-[#FF5A1F]">Preview bai giang</p>
+                  <div className="mt-6 space-y-4">
+                    <div className="rounded-[20px] border border-[#E8EDF5] bg-white p-4">
+                      <p className="text-lg font-black text-[#0F172A]">{lessonForm.title || "Tieu de bai hoc"}</p>
+                      <p className="mt-2 text-sm font-medium leading-6 text-[#667085]">{lessonForm.description || "Mo ta bai hoc se hien thi o day."}</p>
+                    </div>
+
+                    <div className="rounded-[20px] border border-[#E8EDF5] bg-white p-4">
+                      <p className="text-sm font-black text-[#0F172A]">Video</p>
+                      <div className="mt-3 overflow-hidden rounded-2xl bg-[#F8FAFC]">
+                        {previewVideoUrl ? (
+                          <iframe src={previewVideoUrl} className="aspect-video w-full" allowFullScreen />
+                        ) : (
+                          <div className="flex aspect-video items-center justify-center text-sm font-semibold text-[#98A2B3]">Chua co preview video</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[20px] border border-[#E8EDF5] bg-white p-4">
+                      <p className="text-sm font-black text-[#0F172A]">Tai lieu</p>
+                      <div className="mt-3 space-y-3">
+                        <div className="flex items-center gap-3 rounded-xl bg-[#F8FAFC] p-3">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="text-sm font-black text-[#0F172A]">{previewPdfName || "Chua upload PDF"}</p>
+                            <p className="text-xs font-medium text-[#667085]">PDF preview sau khi luu du lieu that</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 rounded-xl bg-[#F8FAFC] p-3">
+                          <FileType2 className="h-5 w-5 text-amber-700" />
+                          <div>
+                            <p className="text-sm font-black text-[#0F172A]">{previewDocName || "Chua upload Word"}</p>
+                            <p className="text-xs font-medium text-[#667085]">Word preview sau khi luu du lieu that</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+
+              <div className="flex justify-end gap-4 border-t border-[#E6EAF0] px-8 py-5">
+                <button type="button" onClick={() => { setIsLessonModalOpen(false); resetLessonForm(); }} className="h-12 rounded-xl border border-[#D8DFEA] bg-white px-8 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">
+                  Huy
+                </button>
+                <button type="submit" disabled={isSavingLesson} className="admin-primary-btn flex h-12 items-center gap-2 rounded-xl px-8 text-sm font-black text-white transition disabled:opacity-60">
+                  {isSavingLesson ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Them bai hoc
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

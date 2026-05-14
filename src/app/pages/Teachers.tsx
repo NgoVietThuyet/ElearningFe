@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Briefcase, Facebook, GraduationCap, Linkedin, Loader2, Mail, Search, Star, Users } from "lucide-react";
+import { Briefcase, Facebook, GraduationCap, Linkedin, Loader2, Mail, Search, Star, Users } from "lucide-react";
 import { publicApi } from "../api/publicApi";
 
 interface Teacher {
@@ -16,24 +16,16 @@ interface FeedbackItem {
   rating: number;
 }
 
-const tabs = ["Tất cả", "Sinh học tế bào", "Di truyền học", "Sinh lý học", "Sinh thái học", "Vi sinh vật"];
-
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
-function teacherSpecialty(teacher: Teacher) {
-  const options = tabs.slice(1);
-  return options[teacher.id % options.length];
-}
-
 export default function Teachers() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("Tất cả");
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -57,12 +49,10 @@ export default function Teachers() {
 
   const filteredTeachers = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
-    return teachers.filter((teacher) => {
-      const matchesSearch = teacher.fullName.toLowerCase().includes(normalized) || teacher.email.toLowerCase().includes(normalized);
-      const matchesTab = activeTab === "Tất cả" || teacherSpecialty(teacher) === activeTab;
-      return matchesSearch && matchesTab;
-    });
-  }, [activeTab, searchTerm, teachers]);
+    return teachers.filter((teacher) =>
+      teacher.fullName.toLowerCase().includes(normalized) || teacher.email.toLowerCase().includes(normalized),
+    );
+  }, [searchTerm, teachers]);
 
   const totalStudents = teachers.reduce((sum, teacher) => sum + teacher.studentCount, 0);
   const totalLessons = teachers.reduce((sum, teacher) => sum + teacher.lessonCount, 0);
@@ -82,7 +72,7 @@ export default function Teachers() {
       <div className="mx-auto max-w-[1500px] px-6 lg:px-12">
         <div className="mb-7">
           <h1 className="text-4xl font-black tracking-tight text-[#101828]">Giảng viên</h1>
-          <p className="mt-3 text-sm font-medium text-slate-500">Đội ngũ giảng viên giàu kinh nghiệm, tâm huyết và chuyên môn cao.</p>
+          <p className="mt-3 text-sm font-medium text-slate-500">Đội ngũ giảng viên giàu kinh nghiệm, tận tâm và chuyên môn cao.</p>
         </div>
 
         <div className="mb-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -99,21 +89,7 @@ export default function Teachers() {
           ))}
         </div>
 
-        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-3">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`h-10 rounded-xl px-5 text-xs font-black transition ${
-                  activeTab === tab ? "bg-[#ff4f12] text-white shadow-lg shadow-orange-500/20" : "text-slate-500 hover:bg-white"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
+        <div className="mb-8 flex justify-end">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -138,7 +114,7 @@ export default function Teachers() {
                     {teacher.avatarUrl ? <img src={teacher.avatarUrl} alt={teacher.fullName} className="h-full w-full object-cover" /> : getInitials(teacher.fullName)}
                   </div>
                   <h2 className="mt-6 text-lg font-black text-[#101828]">{teacher.fullName}</h2>
-                  <p className="mt-1 text-sm font-bold text-slate-500">Chuyên gia {teacherSpecialty(teacher)}</p>
+                  <p className="mt-1 text-sm font-bold text-slate-500">Giảng viên EduSmart</p>
                   <div className="mt-4 flex items-center justify-center gap-1 text-xs font-bold text-slate-500">
                     <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                     4.9
@@ -166,7 +142,7 @@ export default function Teachers() {
           <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-24 text-center">
             <Users className="mx-auto mb-4 h-10 w-10 text-slate-300" />
             <h2 className="text-xl font-black text-[#101828]">Không tìm thấy giảng viên</h2>
-            <p className="mt-2 text-sm font-medium text-slate-500">Thử đổi từ khóa hoặc bộ môn khác.</p>
+            <p className="mt-2 text-sm font-medium text-slate-500">Thử đổi từ khóa tìm kiếm.</p>
           </div>
         )}
       </div>

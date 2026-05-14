@@ -5,7 +5,9 @@ import {
   Menu, 
   LogOut, 
   ChevronDown,
+  BookOpen,
   GraduationCap,
+  UserRound,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
@@ -22,6 +24,7 @@ import {
   AvatarImage,
 } from "../ui/avatar";
 import { jwtDecode } from "jwt-decode";
+import { publicApi } from "../../api/publicApi";
 
 interface User {
   unique_name?: string;
@@ -40,6 +43,22 @@ interface Notification {
   type: 'info' | 'success' | 'warning';
 }
 
+interface SearchCourse {
+  id: number;
+  title: string;
+  description?: string | null;
+  teacherName?: string | null;
+  creatorName?: string | null;
+}
+
+interface SearchTeacher {
+  id: number;
+  fullName: string;
+  email: string;
+  avatarUrl?: string | null;
+  lessonCount?: number;
+}
+
 interface NavbarProps {
   onToggleSidebar: () => void;
 }
@@ -50,6 +69,11 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchCourses, setSearchCourses] = useState<SearchCourse[]>([]);
+  const [searchTeachers, setSearchTeachers] = useState<SearchTeacher[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
   
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -66,6 +90,35 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
     }
   }, []);
 
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    let mounted = true;
+    const loadSearchData = async () => {
+      setIsSearchLoading(true);
+      try {
+        const [coursesRes, teachersRes] = await Promise.all([
+          publicApi.getCourses(),
+          publicApi.getTeachers(),
+        ]);
+
+        if (!mounted) return;
+        setSearchCourses(coursesRes.data || []);
+        setSearchTeachers(teachersRes.data || []);
+      } catch (error) {
+        console.error("Failed to load navbar search data", error);
+      } finally {
+        if (mounted) setIsSearchLoading(false);
+      }
+    };
+
+    loadSearchData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isLoggedIn]);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsLoggedIn(false);
@@ -75,6 +128,37 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    const keyword = searchTerm.trim();
+    if (!keyword) return;
+
+    const firstCourse = getSearchMatches().courses[0];
+    if (firstCourse) {
+      setSearchOpen(false);
+      navigate(`/course/${firstCourse.id}`);
+      return;
+    }
+
+    setSearchOpen(false);
+    navigate(`/courses?search=${encodeURIComponent(keyword)}`);
+  };
+
+  const getSearchMatches = () => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return { courses: [] as SearchCourse[], teachers: [] as SearchTeacher[] };
+
+    const courses = searchCourses
+      .filter((course) =>
+        `${course.title} ${course.description || ""} ${course.teacherName || ""} ${course.creatorName || ""}`
+          .toLowerCase()
+          .includes(keyword),
+      )
+      .slice(0, 5);
+
+    const teachers = searchTeachers
+      .filter((teacher) => `${teacher.fullName} ${teacher.email}`.toLowerCase().includes(keyword))
+      .slice(0, 5);
+
+    return { courses, teachers };
   };
 
   const getUserDisplayName = () => {
@@ -98,6 +182,10 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
   };
 
   const unreadCount = notifications.filter(n => n.unread).length;
+  const isHomePage = location.pathname === "/";
+  const searchMatches = getSearchMatches();
+  const hasSearchTerm = searchTerm.trim().length > 0;
+  const hasSearchResults = searchMatches.courses.length > 0 || searchMatches.teachers.length > 0;
   const publicNavItems = [
     { label: "Trang chủ", path: "/" },
     { label: "Khóa học", path: "/courses" },
@@ -145,12 +233,14 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
           </div>
 
           <div className="flex shrink-0 items-center gap-5">
+            {!isHomePage && (
             <Link to="/courses" className="relative hidden lg:block">
               <Search className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <span className="flex h-14 w-[280px] items-center rounded-2xl border border-slate-200 bg-white pl-14 pr-5 text-base font-semibold text-slate-400">
                 Tìm kiếm khóa học...
               </span>
             </Link>
+            )}
             <Link to="/login" className="rounded-2xl bg-[#ff4f12] px-8 py-4 text-base font-black text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#ea460d]">
               Đăng nhập
             </Link>
@@ -174,6 +264,7 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
           </button>
 
           {/* Search Bar */}
+          {!isHomePage && (
           <div className="hidden lg:block w-full max-w-[400px] relative">
             <form onSubmit={handleSearch} className="relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#98A2B3] group-focus-within:text-[#FF6B00] transition-colors" />
@@ -184,6 +275,7 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
               />
             </form>
           </div>
+          )}
         </div>
 
         {/* Right: Actions */}

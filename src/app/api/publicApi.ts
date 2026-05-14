@@ -28,6 +28,7 @@ export const publicApi = {
   // Get homepage stats (total users, courses, lessons)
   getStats: () => publicClient.get("/api/public/stats"),
   getFeaturedTeachers: () => publicClient.get("/api/public/featured-teachers"),
+  getTeachers: () => publicClient.get("/api/public/teachers"),
 
   // Public feedback endpoints
   getFeedbacks: (limit: number = 100) => publicClient.get(`/api/feedback?limit=${limit}`),

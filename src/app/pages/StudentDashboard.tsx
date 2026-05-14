@@ -73,7 +73,7 @@ export default function StudentDashboard() {
                     style={{ width: `${stats?.overallProgress || 0}%` }}
                   />
                 </div>
-                <p className="mt-3 text-orange-50 font-bold text-sm tracking-wide opacity-90">Bạn đã hoàn thành {stats?.overallProgress || 0}% tiến độ học tập. Tiếp tục cố gắng nhé!</p>
+                <p className="mt-3 text-orange-50 font-bold text-sm tracking-wide opacity-90">Bạn đã hoàn thành {stats?.overallProgress || 0}% lộ trình. Tiếp tục cố gắng nhé!</p>
               </div>
               <div className="flex flex-col items-center">
                 <span className="text-6xl font-black tabular-nums tracking-tighter drop-shadow-md">{stats?.overallProgress || 0}%</span>
@@ -126,8 +126,8 @@ export default function StudentDashboard() {
           ))}
           {courses.length === 0 && (
             <div className="col-span-full text-center py-20 bg-gray-50 rounded-[2.5rem] border-2 border-dashed border-gray-100">
-              <BookOpen className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-              <p className="text-gray-400 font-black uppercase text-xs tracking-widest italic">Bạn chưa đăng ký khóa học nào.</p>
+               <BookOpen className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+               <p className="text-gray-400 font-black uppercase text-xs tracking-widest italic">Bạn chưa đăng ký khóa học nào.</p>
             </div>
           )}
         </div>
@@ -137,10 +137,10 @@ export default function StudentDashboard() {
       <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
         <div className="p-6 border-b border-border bg-[#F8F9FB]/50">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
-              <Activity className="w-5 h-5" />
-            </div>
-            <h2 className="text-xl font-bold text-[#0F172A] tracking-tight">Bài học tiếp theo</h2>
+             <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
+                <Activity className="w-5 h-5" />
+             </div>
+             <h2 className="text-xl font-bold text-[#0F172A] tracking-tight">Lộ trình học tập tiếp theo</h2>
           </div>
         </div>
         <div className="p-6">
@@ -148,19 +148,21 @@ export default function StudentDashboard() {
             {lessons.map((lesson) => (
               <div
                 key={lesson.id}
-                className={`flex flex-col sm:flex-row items-center justify-between p-6 rounded-3xl border transition-all duration-300 ${lesson.status === "locked"
+                className={`flex flex-col sm:flex-row items-center justify-between p-6 rounded-3xl border transition-all duration-300 ${
+                  lesson.status === "locked"
                     ? "border-gray-50 bg-gray-50/20 opacity-50"
                     : "border-gray-100 bg-white hover:border-orange-200 hover:bg-orange-50/20 hover:shadow-lg group"
-                  }`}
+                }`}
               >
                 <div className="flex items-center gap-4 w-full sm:w-auto mb-4 sm:mb-0">
                   <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm ${lesson.status === "completed"
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm ${
+                      lesson.status === "completed"
                         ? "bg-green-100 text-green-600"
                         : lesson.status === "current"
-                          ? "bg-orange-100 text-orange-600 group-hover:bg-orange-600 group-hover:text-white"
-                          : "bg-gray-100 text-gray-400"
-                      }`}
+                        ? "bg-orange-100 text-orange-600 group-hover:bg-orange-600 group-hover:text-white"
+                        : "bg-gray-100 text-gray-400"
+                    }`}
                   >
                     {lesson.status === "completed" ? (
                       <CheckCircle className="w-6 h-6" />
@@ -175,18 +177,19 @@ export default function StudentDashboard() {
                       {lesson.title}
                     </h3>
                     <p className="text-[10px] text-[#667085] font-bold uppercase tracking-widest mt-1 flex items-center gap-1.5">
-                      <span className="w-1 h-1 rounded-full bg-[#FF6B00]"></span>
-                      {lesson.duration}
+                       <span className="w-1 h-1 rounded-full bg-[#FF6B00]"></span>
+                       {lesson.duration}
                     </p>
                   </div>
                 </div>
                 {lesson.status !== "locked" && (
                   <Link
                     to={`/course/${lesson.courseId}`}
-                    className={`w-full sm:w-auto px-6 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all text-center ${lesson.status === "completed"
+                    className={`w-full sm:w-auto px-6 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all text-center ${
+                      lesson.status === "completed"
                         ? "bg-[#F8F9FB] text-[#667085] hover:bg-[#F1F3F5]"
                         : "bg-[#FF6B00] text-white shadow-md hover:bg-[#E65F00]"
-                      }`}
+                    }`}
                   >
                     {lesson.status === "completed" ? "XEM LẠI" : "BẮT ĐẦU HỌC"}
                   </Link>
@@ -195,8 +198,8 @@ export default function StudentDashboard() {
             ))}
             {lessons.length === 0 && (
               <div className="text-center py-16">
-                <Loader2 className="w-10 h-10 text-gray-100 mx-auto mb-4 animate-spin" />
-                <p className="text-gray-400 font-black uppercase text-[10px] tracking-widest italic">Chưa có bài học nào được đề xuất cho bạn.</p>
+                 <Loader2 className="w-10 h-10 text-gray-100 mx-auto mb-4 animate-spin" />
+                 <p className="text-gray-400 font-black uppercase text-[10px] tracking-widest italic">Chưa có bài học nào được đề xuất cho bạn.</p>
               </div>
             )}
           </div>
@@ -216,13 +219,11 @@ export default function StudentDashboard() {
           </div>
         </div>
       ) : (
-        <>
-          <div className="pt-6">
-            <div className="pb-24">
-              {activeSection === "dashboard" && renderDashboard()}
-            </div>
+        <div className="pt-6">
+          <div className="pb-24">
+            {activeSection === "dashboard" && renderDashboard()}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

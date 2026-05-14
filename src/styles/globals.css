@@ -523,3 +523,106 @@
 .dark .course-header-5 {
   background: linear-gradient(135deg, #2a2810, #4d4915);
 }
+
+/* Admin modal system */
+.admin-modal-overlay {
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.admin-modal-shell {
+  border: 1px solid #e6eaf0;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.16);
+}
+
+.admin-modal-panel {
+  border: 1px solid #e6eaf0;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.04);
+}
+
+.admin-modal-section {
+  border-bottom: 1px solid #e6eaf0;
+  padding: 28px 32px;
+}
+
+.admin-modal-section:last-child {
+  border-bottom: 0;
+}
+
+.admin-modal-section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.admin-modal-section-title::before {
+  content: "";
+  width: 3px;
+  height: 24px;
+  border-radius: 999px;
+  background: #ff5a1f;
+}
+
+.admin-field-label {
+  margin-bottom: 10px;
+  display: block;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-field-input,
+.admin-field-select,
+.admin-field-textarea {
+  width: 100%;
+  border: 1px solid #e6eaf0;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.admin-field-input,
+.admin-field-select {
+  height: 48px;
+  border-radius: 14px;
+  padding: 0 16px;
+}
+
+.admin-field-textarea {
+  min-height: 112px;
+  border-radius: 16px;
+  padding: 14px 16px;
+  resize: vertical;
+}
+
+.admin-field-input:focus,
+.admin-field-select:focus,
+.admin-field-textarea:focus {
+  border-color: #ff5a1f;
+  box-shadow: 0 0 0 4px rgba(255, 90, 31, 0.08);
+}
+
+.admin-soft-stat {
+  border: 1px solid #edf1f6;
+  background: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.admin-primary-btn {
+  background: linear-gradient(135deg, #ff6b00, #ff4d12);
+  box-shadow: 0 12px 30px rgba(255, 107, 0, 0.2);
+}
+
+.admin-primary-btn:hover {
+  background: linear-gradient(135deg, #ff7b1f, #ff5a1f);
+}

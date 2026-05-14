@@ -60,10 +60,12 @@ export default function AdminDashboard() {
   const [courses, setCourses] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
   const [lessons, setLessons] = useState<any[]>([]);
+  const [courseMaterials, setCourseMaterials] = useState<any[]>([]);
+  const [learningItems, setLearningItems] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [courseDetailTab, setCourseDetailTab] = useState<"overview" | "lessons" | "materials" | "flashcards" | "quizzes" | "exams">("overview");
   const [courseSearch, setCourseSearch] = useState("");
-  const [courseCategoryFilter, setCourseCategoryFilter] = useState("all");
   const [courseStatusFilter, setCourseStatusFilter] = useState("all");
   const [courseTeacherFilter, setCourseTeacherFilter] = useState("all");
 
@@ -73,9 +75,14 @@ export default function AdminDashboard() {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<"user"|"course"|"news"|"lesson"|null>(null);
+  const [isCourseDescriptionOpen, setIsCourseDescriptionOpen] = useState(false);
+  const [modalType, setModalType] = useState<"user"|"teacher"|"course"|"news"|"lesson"|null>(null);
   const [editItem, setEditItem] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
+  const [isUserCreateMenuOpen, setIsUserCreateMenuOpen] = useState(false);
+  const [detailModal, setDetailModal] = useState<null | { kind: "material" | "flashcard" | "quiz" | "exam"; mode: "create" | "edit"; item?: any }>(null);
+  const [detailPreview, setDetailPreview] = useState<null | { kind: "material" | "flashcard" | "quiz" | "exam"; item: any }>(null);
+  const [detailForm, setDetailForm] = useState<any>({});
 
   // Stats State
   const [gpaData, setGpaData] = useState<any[]>([]);
@@ -181,6 +188,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchCourseMaterials = async (courseId: number) => {
+    try {
+      const res = await adminApi.getCourseMaterials(courseId);
+      setCourseMaterials(res.data);
+    } catch (err) {
+      console.error("Failed to fetch course materials", err);
+    }
+  };
+
+  const fetchCourseLearningItems = async (courseId: number) => {
+    try {
+      const res = await adminApi.getCourseLearningItems(courseId);
+      setLearningItems(res.data);
+    } catch (err) {
+      console.error("Failed to fetch learning items", err);
+    }
+  };
+
   const handleDeleteCourse = async (id: number) => {
     if (!confirm("Bạn có chắc chắn muốn xóa khóa học này?")) return;
     try {
@@ -225,9 +250,10 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleOpenModal = (type: "user"|"course"|"news"|"lesson", item: any = null) => {
+  const handleOpenModal = (type: "user"|"teacher"|"course"|"news"|"lesson", item: any = null) => {
     setModalType(type);
     setEditItem(item);
+    setIsUserCreateMenuOpen(false);
     if (item) {
       if (type === "course") {
         setFormData({
@@ -235,6 +261,7 @@ export default function AdminDashboard() {
           startDate: dateInputValue(item.startDate),
           endDate: dateInputValue(item.endDate),
           teacherId: item.teacherId ?? "",
+          status: item.status === "Hidden" || item.status === "Draft" ? item.status : "Published",
         });
       } else {
         setFormData({
@@ -246,15 +273,33 @@ export default function AdminDashboard() {
       }
     } else {
       if (type === "user") setFormData({ role: 2, dateOfBirth: "", avatarPreview: "" });
+      else if (type === "teacher") setFormData({
+        fullName: "",
+        email: "",
+        password: "",
+        role: 1,
+        dateOfBirth: "",
+        gender: "Nam",
+        phoneNumber: "",
+        address: "",
+        teachingExperienceYears: 0,
+        shortBio: "",
+        isActive: true,
+        assignedCourseId: "",
+        avatarPreview: "",
+      });
       else if (type === "lesson") setFormData({ courseId: selectedCourse?.id });
       else if (type === "course") {
         setFormData({
           title: "",
+          code: "",
           description: "",
           avatarUrl: "",
-          category: "Sinh học",
+          introVideoUrl: "",
           status: "Published",
+          language: "Tiếng Việt",
           durationMinutes: 0,
+          expectedStudentCount: 0,
           startDate: "",
           endDate: "",
           teacherId: "",
@@ -268,6 +313,8 @@ export default function AdminDashboard() {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setIsCourseDescriptionOpen(false);
+    setIsUserCreateMenuOpen(false);
     setModalType(null);
     setEditItem(null);
     setFormData({});
@@ -295,15 +342,34 @@ export default function AdminDashboard() {
           await adminApi.createUser(userPayload);
         }
         fetchUsers();
+      } else if (modalType === "teacher") {
+        const teacherPayload = {
+          ...formData,
+          role: 1,
+          dateOfBirth: formData.dateOfBirth || null,
+          gender: formData.gender || null,
+          phoneNumber: formData.phoneNumber || null,
+          address: formData.address || null,
+          teachingExperienceYears: Number(formData.teachingExperienceYears || 0),
+          shortBio: formData.shortBio || null,
+          isActive: !!formData.isActive,
+          assignedCourseId: formData.assignedCourseId ? Number(formData.assignedCourseId) : null,
+        };
+
+        await adminApi.createUser(teacherPayload);
+        await Promise.all([fetchUsers(), fetchCourses()]);
       } else if (modalType === "course") {
         const coursePayload = {
           title: formData.title,
           description: formData.description || "",
           avatarUrl: formData.avatarUrl || null,
+          code: formData.code || "",
+          introVideoUrl: formData.introVideoUrl || null,
           teacherId: formData.teacherId ? Number(formData.teacherId) : null,
-          category: formData.category || "Sinh học",
-          status: formData.status || "Published",
+          status: ((e.nativeEvent as any).submitter?.value === "Draft" ? "Draft" : formData.status) || "Published",
+          language: formData.language || "Tiếng Việt",
           durationMinutes: Number(formData.durationMinutes || 0),
+          expectedStudentCount: Number(formData.expectedStudentCount || 0),
           startDate: formData.startDate || null,
           endDate: formData.endDate || null,
           learningOutcomes: formData.learningOutcomes || "",
@@ -468,8 +534,9 @@ export default function AdminDashboard() {
         `${user.fullName} ${user.email} ${user.phoneNumber || ""}`.toLowerCase().includes(keyword);
       
       const matchesRole = userRoleFilter === "all" || String(roleToValue(user.role)) === userRoleFilter;
-      const matchesStatus = userStatusFilter === "all" || "Hoạt động" === userStatusFilter; // Mocking status for now
-      
+      const userStatus = user.isActive === false ? "Kh?ng ho?t ??ng" : "Ho?t ??ng";
+      const matchesStatus = userStatusFilter === "all" || userStatus === userStatusFilter;
+
       return matchesSearch && matchesRole && matchesStatus;
     });
 
@@ -526,9 +593,23 @@ export default function AdminDashboard() {
               <span className="text-[#0F172A]">Người dùng</span>
             </div>
           </div>
-          <button onClick={() => handleOpenModal("user")} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#FF4D12] px-6 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition-all hover:bg-[#E6420C] hover:-translate-y-0.5">
-            <Plus className="h-5 w-5" /> Thêm người dùng
-          </button>
+          <div className="relative">
+            <button onClick={() => setIsUserCreateMenuOpen((value) => !value)} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#FF4D12] px-6 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition-all hover:bg-[#E6420C] hover:-translate-y-0.5">
+              <Plus className="h-5 w-5" /> Th?m ng??i d?ng <ChevronDown className="h-4 w-4" />
+            </button>
+            {isUserCreateMenuOpen && (
+              <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-56 overflow-hidden rounded-xl border border-[#E6EAF0] bg-white shadow-2xl">
+                <button onClick={() => handleOpenModal("teacher")} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-[#0F172A] transition hover:bg-[#FFF4EC]">
+                  <GraduationCap className="h-4 w-4 text-[#FF4D12]" />
+                  T?o gi?o vi?n
+                </button>
+                <button onClick={() => handleOpenModal("user")} className="flex w-full items-center gap-3 border-t border-[#EEF2F6] px-4 py-3 text-left text-sm font-bold text-[#0F172A] transition hover:bg-[#F8F9FB]">
+                  <UserPlus className="h-4 w-4 text-[#2563EB]" />
+                  T?o h?c sinh
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -623,9 +704,9 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-4 py-5 text-[12px] font-bold text-[#667085] whitespace-nowrap">{formatDate(user.dateOfBirth)}</td>
                     <td className="px-4 py-5">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-green-50 text-green-600">
-                        <span className="w-1 h-1 rounded-full bg-green-500"></span>
-                        Hoạt động
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${user.isActive === false ? "bg-slate-100 text-slate-500" : "bg-green-50 text-green-600"}`}>
+                        <span className={`w-1 h-1 rounded-full ${user.isActive === false ? "bg-slate-400" : "bg-green-500"}`}></span>
+                        {user.isActive === false ? "Kh??ng ho???t ?????ng" : "Ho???t ?????ng"}
                       </span>
                     </td>
                     <td className="px-4 py-5 text-[12px] font-bold text-[#667085] whitespace-nowrap">{formatDate(user.createdAt)}</td>
@@ -723,16 +804,6 @@ export default function AdminDashboard() {
     return "bg-green-50 text-green-600";
   };
 
-  const categoryClass = (category?: string) => {
-    const value = (category || "").toLowerCase();
-    if (value.includes("12")) return "bg-orange-50 text-orange-600";
-    if (value.includes("11")) return "bg-amber-50 text-amber-600";
-    if (value.includes("10")) return "bg-blue-50 text-blue-600";
-    if (value.includes("di truyền")) return "bg-violet-50 text-violet-600";
-    if (value.includes("tế bào")) return "bg-emerald-50 text-emerald-600";
-    return "bg-cyan-50 text-cyan-600";
-  };
-
   const formatDuration = (minutes?: number) => {
     const total = Number(minutes || 0);
     if (!total) return "Chưa đặt";
@@ -765,23 +836,184 @@ export default function AdminDashboard() {
       .map((item) => item.trim())
       .filter(Boolean);
 
+  const lessonTitleById = (lessonId: number) =>
+    lessons.find((lesson) => Number(lesson.id) === Number(lessonId))?.title || "Bài học";
+
+  const materialPreviewUrl = (material: any) => {
+    const type = String(material?.fileType || "").toLowerCase();
+    if (type === "doc" || type === "docx") {
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(material.fileUrl)}`;
+    }
+    return material?.fileUrl || "";
+  };
+
+  const parseLearningContent = (item: any) => {
+    try {
+      return JSON.parse(item?.content || "{}");
+    } catch {
+      return {};
+    }
+  };
+
+  const flashcardItems = learningItems.filter((item) => item.type === "flashcard");
+  const quizItems = learningItems.filter((item) => item.type === "quiz");
+  const examItems = learningItems.filter((item) => item.type === "exam");
+
+  const openDetailModal = (kind: "material" | "flashcard" | "quiz" | "exam", mode: "create" | "edit", item?: any) => {
+    setDetailModal({ kind, mode, item });
+
+    if (kind === "material") {
+      setDetailForm(item ? {
+        courseId: selectedCourse?.id,
+        title: item.title || "",
+        fileUrl: item.fileUrl || "",
+        fileType: item.fileType || "pdf",
+        mimeType: item.mimeType || "",
+        description: item.description || "",
+      } : {
+        courseId: selectedCourse?.id,
+        title: "",
+        fileUrl: "",
+        fileType: "pdf",
+        mimeType: "",
+        description: "",
+      });
+      return;
+    }
+
+    const content = item ? parseLearningContent(item) : {};
+    setDetailForm(item ? {
+      courseId: selectedCourse?.id,
+      lessonId: item.lessonId || lessons[0]?.id || "",
+      title: item.title || "",
+      type: kind === "flashcard" ? "flashcard" : kind === "quiz" ? "quiz" : "exam",
+      cards: content.cards || [{ front: "", back: "" }],
+      questions: content.questions || [{
+        question: "",
+        options: ["", "", "", ""],
+        correctAnswer: 0,
+        explanation: "",
+      }],
+    } : {
+      courseId: selectedCourse?.id,
+      lessonId: lessons[0]?.id || "",
+      title: "",
+      type: kind === "flashcard" ? "flashcard" : kind === "quiz" ? "quiz" : "exam",
+      cards: [{ front: "", back: "" }],
+      questions: [{
+        question: "",
+        options: ["", "", "", ""],
+        correctAnswer: 0,
+        explanation: "",
+      }],
+    });
+  };
+
+  const closeDetailModal = () => {
+    setDetailModal(null);
+    setDetailForm({});
+  };
+
+  const refreshCourseDetailData = async () => {
+    if (!selectedCourse?.id) return;
+    await Promise.all([
+      fetchLessons(selectedCourse.id),
+      fetchCourseMaterials(selectedCourse.id),
+      fetchCourseLearningItems(selectedCourse.id),
+    ]);
+  };
+
+  const handleDeleteCourseMaterial = async (id: number) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa tài liệu này?")) return;
+    try {
+      await adminApi.deleteCourseMaterial(id);
+      await fetchCourseMaterials(selectedCourse.id);
+      toast.success("Xóa tài liệu thành công");
+    } catch (err) {
+      toast.error("Lỗi khi xóa tài liệu");
+    }
+  };
+
+  const handleDeleteLearningItem = async (id: number, label: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa ${label.toLowerCase()} này?`)) return;
+    try {
+      await adminApi.deleteLearningItem(id);
+      await fetchCourseLearningItems(selectedCourse.id);
+      toast.success(`Xóa ${label.toLowerCase()} thành công`);
+    } catch (err) {
+      toast.error(`Lỗi khi xóa ${label.toLowerCase()}`);
+    }
+  };
+
+  const handleSubmitDetailModal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!detailModal || !selectedCourse?.id) return;
+
+    try {
+      if (detailModal.kind === "material") {
+        const payload = {
+          courseId: selectedCourse.id,
+          title: detailForm.title,
+          fileUrl: detailForm.fileUrl,
+          fileType: detailForm.fileType,
+          mimeType: detailForm.mimeType || "",
+          description: detailForm.description || "",
+        };
+
+        if (detailModal.mode === "edit" && detailModal.item) {
+          await adminApi.updateCourseMaterial(detailModal.item.id, payload);
+        } else {
+          await adminApi.createCourseMaterial(payload);
+        }
+
+        await fetchCourseMaterials(selectedCourse.id);
+      } else {
+        const payload = {
+          courseId: selectedCourse.id,
+          lessonId: Number(detailForm.lessonId),
+          title: detailForm.title,
+          type: detailForm.type,
+          content: JSON.stringify(detailForm.type === "flashcard"
+            ? { type: detailForm.type, cards: detailForm.cards }
+            : { type: detailForm.type, questions: detailForm.questions }),
+        };
+
+        if (detailModal.mode === "edit" && detailModal.item) {
+          await adminApi.updateLearningItem(detailModal.item.id, payload);
+        } else {
+          await adminApi.createLearningItem(payload);
+        }
+
+        await fetchCourseLearningItems(selectedCourse.id);
+      }
+
+      closeDetailModal();
+      toast.success("Lưu nội dung thành công");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể lưu nội dung");
+    }
+  };
+
   const openCourseDetail = async (course: any) => {
     setSelectedCourse(course);
-    await fetchLessons(course.id);
+    setCourseDetailTab("overview");
+    await Promise.all([
+      fetchLessons(course.id),
+      fetchCourseMaterials(course.id),
+      fetchCourseLearningItems(course.id),
+    ]);
     setActiveSection("courseDetail");
   };
 
   const renderCoursesV2 = () => {
     const teacherOptions = users.filter((user) => roleToValue(user.role) === 1);
-    const courseCategories = Array.from(new Set(courses.map((course) => course.category || "Sinh học"))).sort();
     const filteredCourses = courses.filter((course) => {
       const teacher = getCourseTeacher(course);
       const keyword = courseSearch.trim().toLowerCase();
       const matchesSearch = !keyword || `${course.title} ${stripHtml(course.description || "")} ${teacher.name}`.toLowerCase().includes(keyword);
-      const matchesCategory = courseCategoryFilter === "all" || (course.category || "Sinh học") === courseCategoryFilter;
       const matchesStatus = courseStatusFilter === "all" || getCourseStatus(course) === courseStatusFilter;
       const matchesTeacher = courseTeacherFilter === "all" || String(course.teacherId || "") === courseTeacherFilter;
-      return matchesSearch && matchesCategory && matchesStatus && matchesTeacher;
+      return matchesSearch && matchesStatus && matchesTeacher;
     });
     const published = courses.filter((course) => getCourseStatus(course) === "Published").length;
     const drafts = courses.filter((course) => getCourseStatus(course) === "Draft").length;
@@ -881,10 +1113,6 @@ export default function AdminDashboard() {
               />
             </div>
             <div className="flex items-center gap-3">
-              <select value={courseCategoryFilter} onChange={(e) => setCourseCategoryFilter(e.target.value)} className="h-12 rounded-lg border border-[#E6EAF0] bg-white px-5 text-sm font-bold text-[#0F172A] outline-none min-w-[160px] focus:border-[#FF6B00]">
-                <option value="all">Danh mục: Tất cả</option>
-                {courseCategories.map((category) => <option key={category} value={category}>{category}</option>)}
-              </select>
               <select value={courseStatusFilter} onChange={(e) => setCourseStatusFilter(e.target.value)} className="h-12 rounded-lg border border-[#E6EAF0] bg-white px-5 text-sm font-bold text-[#0F172A] outline-none min-w-[160px] focus:border-[#FF6B00]">
                 <option value="all">Trạng thái: Tất cả</option>
                 <option value="Published">Đã xuất bản</option>
@@ -906,7 +1134,6 @@ export default function AdminDashboard() {
               <thead>
                 <tr className="border-b border-[#E6EAF0] bg-[#FAFBFC]/50">
                   <th className="px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Khóa học</th>
-                  <th className="px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Danh mục</th>
                   <th className="px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Giảng viên</th>
                   <th className="px-2 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Học viên</th>
                   <th className="px-2 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Thời lượng</th>
@@ -929,11 +1156,6 @@ export default function AdminDashboard() {
                             <p className="mt-0.5 line-clamp-1 text-[10px] font-bold text-[#98A2B3] leading-relaxed uppercase tracking-tight">{stripHtml(course.description || "")}</p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-4 py-5">
-                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm border border-transparent ${categoryClass(course.category)}`}>
-                          {course.category || "N/A"}
-                        </span>
                       </td>
                       <td className="px-4 py-5">
                         <div className="flex items-center gap-2">
@@ -1155,6 +1377,328 @@ export default function AdminDashboard() {
     );
   };
 
+  const renderCourseDetailV2 = (course: any) => {
+    if (!course) {
+      return (
+        <div className="rounded-xl border border-[#E6EAF0] bg-white p-8 text-center">
+          <p className="text-sm font-semibold text-[#667085]">Chưa chọn khóa học.</p>
+          <button onClick={() => setActiveSection("courses")} className="mt-4 rounded-lg bg-[#FF4D12] px-5 py-3 text-sm font-bold text-white">Quay lại danh sách</button>
+        </div>
+      );
+    }
+
+    const teacher = getCourseTeacher(course);
+    const progress = Math.round(Number(course.averageProgress || 0));
+    const outcomes = courseOutcomes(course);
+    const lessonGroups = lessons.length ? lessons : [];
+    const tabs = [
+      { id: "overview" as const, label: "Tổng quan", count: null },
+      { id: "lessons" as const, label: "Nội dung khóa học", count: lessonGroups.length },
+      { id: "materials" as const, label: "Tài liệu", count: courseMaterials.length },
+      { id: "flashcards" as const, label: "Flashcard", count: flashcardItems.length },
+      { id: "quizzes" as const, label: "Quiz", count: quizItems.length },
+      { id: "exams" as const, label: "Bài thi", count: examItems.length },
+    ];
+
+    const renderLearningItemCards = (items: any[], kind: "flashcard" | "quiz" | "exam") => (
+      <section className="rounded-xl border border-[#E6EAF0] bg-white p-7 shadow-sm">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black text-[#0F172A]">
+              {kind === "flashcard" ? "Bộ flashcard" : kind === "quiz" ? "Danh sách quiz" : "Danh sách bài thi"}
+            </h2>
+            <p className="mt-2 text-sm font-medium text-[#667085]">
+              {kind === "flashcard" ? "Quản lý các thẻ ghi nhớ theo từng bài học." : kind === "quiz" ? "CRUD và preview các bộ câu hỏi luyện tập." : "CRUD và preview các đề kiểm tra của khóa học."}
+            </p>
+          </div>
+          <button onClick={() => openDetailModal(kind, "create")} className="flex h-11 items-center gap-2 rounded-lg bg-[#FF4D12] px-5 text-sm font-black text-white transition hover:bg-[#E6420C]">
+            <Plus className="h-4 w-4" />
+            {kind === "flashcard" ? "Thêm flashcard" : kind === "quiz" ? "Thêm quiz" : "Thêm bài thi"}
+          </button>
+        </div>
+
+        {!items.length ? (
+          <div className="rounded-xl border border-dashed border-[#D8DFEA] bg-[#FBFCFE] p-10 text-center text-sm font-semibold text-[#667085]">
+            Chưa có nội dung cho mục này.
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {items.map((item) => {
+              const content = parseLearningContent(item);
+              const cards = content.cards || [];
+              const questions = content.questions || [];
+              return (
+                <div key={item.id} className="rounded-xl border border-[#E6EAF0] p-5 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-black text-[#0F172A]">{item.title}</p>
+                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#98A2B3]">{lessonTitleById(item.lessonId)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setDetailPreview({ kind, item })} className="rounded-lg p-2 text-[#667085] transition hover:bg-[#F8F9FB] hover:text-[#0F172A]"><Eye className="h-4 w-4" /></button>
+                      <button onClick={() => openDetailModal(kind, "edit", item)} className="rounded-lg p-2 text-[#667085] transition hover:bg-[#F8F9FB] hover:text-[#0F172A]"><Edit className="h-4 w-4" /></button>
+                      <button onClick={() => handleDeleteLearningItem(item.id, kind === "flashcard" ? "Flashcard" : kind === "quiz" ? "Quiz" : "Bài thi")} className="rounded-lg p-2 text-[#667085] transition hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-xl bg-[#F8FAFC] p-4">
+                    {kind === "flashcard" ? (
+                      <>
+                        <p className="text-sm font-bold text-[#0F172A]">{cards.length} thẻ</p>
+                        <div className="mt-3 grid gap-3">
+                          {cards.slice(0, 2).map((card: any, index: number) => (
+                            <div key={index} className="rounded-lg border border-[#E6EAF0] bg-white p-3">
+                              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#98A2B3]">Mặt trước</p>
+                              <p className="mt-2 text-sm font-semibold text-[#0F172A]">{card.front}</p>
+                              <p className="mt-3 text-xs font-black uppercase tracking-[0.2em] text-[#98A2B3]">Mặt sau</p>
+                              <p className="mt-2 text-sm font-medium text-[#475569]">{card.back}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-bold text-[#0F172A]">{questions.length} câu hỏi</p>
+                        {questions[0] && (
+                          <div className="mt-3 rounded-lg border border-[#E6EAF0] bg-white p-3">
+                            <p className="text-sm font-semibold text-[#0F172A]">{questions[0].question}</p>
+                            <div className="mt-3 grid gap-2">
+                              {(questions[0].options || []).map((option: string, index: number) => (
+                                <div key={index} className={`rounded-md px-3 py-2 text-sm ${Number(questions[0].correctAnswer) === index ? "bg-green-50 font-bold text-green-700" : "bg-[#F8FAFC] text-[#475569]"}`}>
+                                  {String.fromCharCode(65 + index)}. {option}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    );
+
+    return (
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+        <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
+          <section className="relative min-h-[335px] overflow-hidden rounded-xl bg-[#0F172A] shadow-sm">
+            <img src={getCourseImage(course)} alt={course.title} className="absolute inset-0 h-full w-full object-cover opacity-70" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" />
+            <div className="relative z-10 flex min-h-[335px] h-full flex-col justify-end p-8 text-white">
+              <span className="mb-4 w-fit rounded-full bg-[#FF4D12] px-3 py-1 text-xs font-black uppercase">Khóa học tiêu biểu</span>
+              <h1 className="max-w-xl text-4xl font-black tracking-tight">{course.title}</h1>
+              <p className="mt-4 max-w-xl text-sm font-medium leading-7 text-white/90">{stripHtml(course.description || "").slice(0, 180)}</p>
+              <div className="mt-8 flex items-center gap-4">
+                <div className="flex -space-x-3">
+                  {[teacher.name, course.creatorName, "Học viên"].map((name, index) => (
+                    <div key={index} className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[#FFF4EC] text-xs font-black text-[#FF6B00]">{getInitials(name)}</div>
+                  ))}
+                </div>
+                <span className="text-sm font-bold">{formatNumber(course.studentCount)} học sinh đã đăng ký</span>
+              </div>
+            </div>
+            <button className="absolute right-8 top-8 z-10 rounded-full bg-white px-6 py-3 text-sm font-black text-[#FF4D12] shadow-lg">Tiếp tục học</button>
+          </section>
+
+          <aside className="rounded-xl border border-[#E6EAF0] bg-white p-7 shadow-sm">
+            {[
+              { icon: UserRound, label: "Giảng viên", value: teacher.name },
+              { icon: Calendar, label: "Ngày bắt đầu", value: formatDate(course.startDate) },
+              { icon: CalendarDays, label: "Ngày kết thúc", value: formatDate(course.endDate) },
+              { icon: Clock3, label: "Thời lượng", value: formatDuration(course.durationMinutes) },
+              { icon: Users, label: "Học sinh", value: `${formatNumber(course.studentCount)} học sinh` },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center justify-between border-b border-[#EEF2F6] py-4 last:border-0">
+                <div className="flex items-center gap-3 text-sm font-semibold text-[#667085]"><item.icon className="h-5 w-5" /> {item.label}</div>
+                <span className="max-w-[190px] text-right text-sm font-black text-[#0F172A]">{item.value}</span>
+              </div>
+            ))}
+            <div className="pt-4">
+              <div className="mb-3 flex items-center justify-between text-sm font-bold">
+                <span className="text-[#667085]">Tiến độ khóa học</span>
+                <span className="text-[#FF4D12]">{progress}% hoàn thành</span>
+              </div>
+              <div className="h-2 rounded-full bg-[#EEF2F6]"><div className="h-full rounded-full bg-[#FF4D12]" style={{ width: `${Math.min(progress, 100)}%` }} /></div>
+            </div>
+          </aside>
+        </div>
+
+        <div className="flex overflow-x-auto rounded-xl border border-[#E6EAF0] bg-white px-3 shadow-sm">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setCourseDetailTab(tab.id)}
+              className={`relative flex min-w-fit items-center gap-3 px-5 py-5 text-sm font-bold ${courseDetailTab === tab.id ? "text-[#FF4D12]" : "text-[#667085]"}`}
+            >
+              <span>{tab.label}</span>
+              {tab.count !== null && <span className={`rounded-full px-2.5 py-1 text-xs font-black ${courseDetailTab === tab.id ? "bg-[#FFF1EB] text-[#FF4D12]" : "bg-[#F1F5F9] text-[#475569]"}`}>{tab.count}</span>}
+              {courseDetailTab === tab.id && <span className="absolute bottom-0 left-5 right-5 h-0.5 rounded-full bg-[#FF4D12]" />}
+            </button>
+          ))}
+        </div>
+
+        {courseDetailTab === "overview" && (
+          <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+            <div className="space-y-6">
+              <section className="rounded-xl border border-[#E6EAF0] bg-white p-7 shadow-sm">
+                <h2 className="flex items-center gap-3 text-xl font-black text-[#0F172A]"><BookOpen className="h-6 w-6 text-[#FF4D12]" /> Giới thiệu khóa học</h2>
+                <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_280px]">
+                  <div>
+                    <p className="text-sm font-medium leading-7 text-[#3C4A5F]">{stripHtml(course.description || "")}</p>
+                    <div className="mt-6 space-y-3">
+                      {(outcomes.length ? outcomes : ["Hệ thống kiến thức đầy đủ, dễ hiểu", "Bài giảng video chất lượng cao", "Tài liệu PDF và sơ đồ tư duy"]).map((item) => (
+                        <div key={item} className="flex items-center gap-3 text-sm font-semibold text-[#3C4A5F]"><CheckCircle2 className="h-5 w-5 text-green-500" /> {item}</div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-green-50 to-orange-50 p-6">
+                    <div className="grid h-48 w-48 place-items-center rounded-full bg-white text-[#22C55E] shadow-inner">
+                      <Layers className="h-24 w-24" />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-[#E6EAF0] bg-white p-7 shadow-sm">
+                <div className="mb-5 flex items-center justify-between gap-4">
+                  <h2 className="flex items-center gap-3 text-xl font-black text-[#0F172A]"><GraduationCap className="h-6 w-6 text-[#FF4D12]" /> Nội dung khóa học</h2>
+                  <button onClick={() => handleOpenModal("lesson")} className="flex h-11 items-center gap-2 rounded-lg border border-[#D8DFEA] px-4 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]"><Plus className="h-4 w-4" /> Thêm bài học</button>
+                </div>
+                <div className="overflow-hidden rounded-xl border border-[#E6EAF0]">
+                  {lessonGroups.map((lesson, index) => (
+                    <div key={lesson.id || index} className={`border-b border-[#E6EAF0] p-5 last:border-0 ${index === 0 ? "bg-[#FFF4EC]" : "bg-white"}`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#FF4D12]"><PlayCircle className="h-5 w-5" /></div>
+                          <div>
+                            <p className="text-sm font-black text-[#0F172A]">Bài {index + 1}. {lesson.title}</p>
+                            <p className="mt-1 text-xs font-semibold text-[#667085]">{lesson.description || "Video bài giảng, tài liệu PDF, flashcard và quiz."}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleOpenModal("lesson", lesson)} className="rounded-lg p-2 text-[#667085] transition hover:bg-[#F8F9FB] hover:text-[#0F172A]"><Edit className="h-4 w-4" /></button>
+                          <button onClick={() => handleDeleteLesson(lesson.id)} className="rounded-lg p-2 text-[#667085] transition hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <div className="space-y-6">
+              <section className="rounded-xl border border-[#E6EAF0] bg-white p-7 text-center shadow-sm">
+                {teacher.avatar ? <img src={teacher.avatar} alt={teacher.name} className="mx-auto h-24 w-24 rounded-full object-cover" /> : <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#FFF4EC] text-2xl font-black text-[#FF4D12]">{getInitials(teacher.name)}</div>}
+                <h3 className="mt-5 text-lg font-black text-[#0F172A]">{teacher.name}</h3>
+                <p className="text-sm font-semibold text-[#667085]">Giảng viên Sinh học</p>
+                <div className="mt-6 grid grid-cols-3 gap-3 text-center">
+                  <div><p className="text-lg font-black text-[#0F172A]">8+</p><p className="text-xs font-semibold text-[#667085]">Năm kinh nghiệm</p></div>
+                  <div><p className="text-lg font-black text-[#0F172A]">2.500+</p><p className="text-xs font-semibold text-[#667085]">Học sinh</p></div>
+                  <div><p className="text-lg font-black text-[#0F172A]">{formatNumber(course.studentCount)}</p><p className="text-xs font-semibold text-[#667085]">Đăng ký</p></div>
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-[#E6EAF0] bg-white p-7 shadow-sm">
+                <h3 className="text-lg font-black text-[#0F172A]">Bạn sẽ nhận được</h3>
+                <div className="mt-5 space-y-4">
+                  {(outcomes.length ? outcomes : ["Bài giảng video chất lượng cao", "Tài liệu PDF đầy đủ", "Quiz và bài thi đánh giá năng lực", "Cập nhật nội dung miễn phí"]).map((item) => (
+                    <div key={item} className="flex gap-3 text-sm font-semibold text-[#3C4A5F]"><CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" /> {item}</div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-[#E6EAF0] bg-white p-7 text-center shadow-sm">
+                <Award className="mx-auto h-20 w-20 text-amber-400" />
+                <h3 className="mt-4 text-lg font-black text-[#0F172A]">Chứng chỉ hoàn thành</h3>
+                <p className="mt-3 text-sm font-medium leading-6 text-[#667085]">Nhận chứng chỉ của EduSmart sau khi hoàn thành tất cả bài học và bài thi.</p>
+              </section>
+            </div>
+          </div>
+        )}
+
+        {courseDetailTab === "lessons" && (
+          <section className="rounded-xl border border-[#E6EAF0] bg-white p-7 shadow-sm">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-black text-[#0F172A]">Danh sách bài học</h2>
+                <p className="mt-2 text-sm font-medium text-[#667085]">Quản lý nội dung video, mô tả và PDF nền cho từng bài học.</p>
+              </div>
+              <button onClick={() => handleOpenModal("lesson")} className="flex h-11 items-center gap-2 rounded-lg bg-[#FF4D12] px-5 text-sm font-black text-white transition hover:bg-[#E6420C]"><Plus className="h-4 w-4" /> Thêm bài học</button>
+            </div>
+            <div className="grid gap-4">
+              {lessonGroups.map((lesson, index) => (
+                <div key={lesson.id} className="rounded-xl border border-[#E6EAF0] p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-lg font-black text-[#0F172A]">Bài {index + 1}. {lesson.title}</p>
+                      <p className="mt-2 text-sm font-medium leading-6 text-[#667085]">{lesson.description || "Chưa có mô tả."}</p>
+                      <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold text-[#475569]">
+                        {lesson.videoUrl && <span className="rounded-full bg-[#F1F5F9] px-3 py-1">Video</span>}
+                        {lesson.pdfUrl && <span className="rounded-full bg-[#F1F5F9] px-3 py-1">PDF nền</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleOpenModal("lesson", lesson)} className="rounded-lg p-2 text-[#667085] transition hover:bg-[#F8F9FB] hover:text-[#0F172A]"><Edit className="h-4 w-4" /></button>
+                      <button onClick={() => handleDeleteLesson(lesson.id)} className="rounded-lg p-2 text-[#667085] transition hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {courseDetailTab === "materials" && (
+          <section className="rounded-xl border border-[#E6EAF0] bg-white p-7 shadow-sm">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-black text-[#0F172A]">Tài liệu khóa học</h2>
+                <p className="mt-2 text-sm font-medium text-[#667085]">Cho phép preview trực tiếp PDF, DOC, DOCX ngay trong trang quản trị.</p>
+              </div>
+              <button onClick={() => openDetailModal("material", "create")} className="flex h-11 items-center gap-2 rounded-lg bg-[#FF4D12] px-5 text-sm font-black text-white transition hover:bg-[#E6420C]"><Plus className="h-4 w-4" /> Thêm tài liệu</button>
+            </div>
+
+            {!courseMaterials.length ? (
+              <div className="rounded-xl border border-dashed border-[#D8DFEA] bg-[#FBFCFE] p-10 text-center text-sm font-semibold text-[#667085]">
+                Chưa có tài liệu nào.
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {courseMaterials.map((material) => (
+                  <div key={material.id} className="rounded-xl border border-[#E6EAF0] p-5 shadow-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-lg font-black text-[#0F172A]">{material.title}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="rounded-full bg-[#FFF4EC] px-3 py-1 text-xs font-black uppercase text-[#FF4D12]">{material.fileType}</span>
+                          <span className="text-xs font-semibold text-[#98A2B3]">{formatDate(material.updatedAt)}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setDetailPreview({ kind: "material", item: material })} className="rounded-lg p-2 text-[#667085] transition hover:bg-[#F8F9FB] hover:text-[#0F172A]"><Eye className="h-4 w-4" /></button>
+                        <button onClick={() => openDetailModal("material", "edit", material)} className="rounded-lg p-2 text-[#667085] transition hover:bg-[#F8F9FB] hover:text-[#0F172A]"><Edit className="h-4 w-4" /></button>
+                        <button onClick={() => handleDeleteCourseMaterial(material.id)} className="rounded-lg p-2 text-[#667085] transition hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                    </div>
+                    <p className="mt-4 text-sm font-medium leading-6 text-[#667085]">{material.description || "Không có mô tả."}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {courseDetailTab === "flashcards" && renderLearningItemCards(flashcardItems, "flashcard")}
+        {courseDetailTab === "quizzes" && renderLearningItemCards(quizItems, "quiz")}
+        {courseDetailTab === "exams" && renderLearningItemCards(examItems, "exam")}
+      </div>
+    );
+  };
+
   const renderNews = () => (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="bg-white rounded-[28px] shadow-sm border border-[#ECEEF2] overflow-hidden">
@@ -1242,11 +1786,539 @@ export default function AdminDashboard() {
         {activeSection === "courses" && renderCoursesV2()}
         {activeSection === "news" && renderNews()}
         {activeSection === "feedback" && renderFeedback()}
-        {activeSection === "courseDetail" && renderCourseDetail(selectedCourse)}
+        {activeSection === "courseDetail" && renderCourseDetailV2(selectedCourse)}
       </div>
 
+      {detailModal && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[#0F172A]/60 p-6 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#E6EAF0] px-8 py-6">
+              <div>
+                <h2 className="text-2xl font-black text-[#0F172A]">
+                  {detailModal.mode === "edit" ? "Cập nhật" : "Tạo mới"}{" "}
+                  {detailModal.kind === "material" ? "tài liệu" : detailModal.kind === "flashcard" ? "flashcard" : detailModal.kind === "quiz" ? "quiz" : "bài thi"}
+                </h2>
+                <p className="mt-2 text-sm font-semibold text-[#667085]">Quản lý nội dung hiển thị trong trang chi tiết khóa học.</p>
+              </div>
+              <button onClick={closeDetailModal} className="rounded-lg p-2 text-[#667085] transition hover:bg-[#F8F9FB]"><X className="h-5 w-5" /></button>
+            </div>
+
+            <form onSubmit={handleSubmitDetailModal} className="space-y-6 p-8">
+              {detailModal.kind === "material" ? (
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <label className="mb-2 block text-sm font-black text-[#0F172A]">Tên tài liệu</label>
+                    <input required value={detailForm.title || ""} onChange={(e) => setDetailForm({ ...detailForm, title: e.target.value })} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none focus:border-[#FF6B00]" />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-black text-[#0F172A]">Loại file</label>
+                    <select value={detailForm.fileType || "pdf"} onChange={(e) => setDetailForm({ ...detailForm, fileType: e.target.value })} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none focus:border-[#FF6B00]">
+                      <option value="pdf">PDF</option>
+                      <option value="doc">DOC</option>
+                      <option value="docx">DOCX</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-black text-[#0F172A]">Mime type</label>
+                    <input value={detailForm.mimeType || ""} onChange={(e) => setDetailForm({ ...detailForm, mimeType: e.target.value })} placeholder="application/pdf" className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none focus:border-[#FF6B00]" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-2 block text-sm font-black text-[#0F172A]">File URL</label>
+                    <input required value={detailForm.fileUrl || ""} onChange={(e) => setDetailForm({ ...detailForm, fileUrl: e.target.value })} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none focus:border-[#FF6B00]" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-2 block text-sm font-black text-[#0F172A]">Mô tả</label>
+                    <textarea rows={4} value={detailForm.description || ""} onChange={(e) => setDetailForm({ ...detailForm, description: e.target.value })} className="w-full rounded-lg border border-[#D8DFEA] px-4 py-3 text-sm font-semibold outline-none focus:border-[#FF6B00]" />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-[#0F172A]">Tiêu đề</label>
+                      <input required value={detailForm.title || ""} onChange={(e) => setDetailForm({ ...detailForm, title: e.target.value })} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none focus:border-[#FF6B00]" />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-[#0F172A]">Bài học</label>
+                      <select required value={detailForm.lessonId || ""} onChange={(e) => setDetailForm({ ...detailForm, lessonId: e.target.value })} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none focus:border-[#FF6B00]">
+                        <option value="">Chọn bài học</option>
+                        {lessons.map((lesson) => (
+                          <option key={lesson.id} value={lesson.id}>{lesson.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {detailModal.kind === "flashcard" ? (
+                    <div className="space-y-4">
+                      {(detailForm.cards || []).map((card: any, index: number) => (
+                        <div key={index} className="grid gap-4 rounded-xl border border-[#E6EAF0] p-4 md:grid-cols-2">
+                          <div>
+                            <label className="mb-2 block text-sm font-black text-[#0F172A]">Mặt trước</label>
+                            <textarea rows={3} value={card.front || ""} onChange={(e) => {
+                              const cards = [...(detailForm.cards || [])];
+                              cards[index] = { ...cards[index], front: e.target.value };
+                              setDetailForm({ ...detailForm, cards });
+                            }} className="w-full rounded-lg border border-[#D8DFEA] px-4 py-3 text-sm font-semibold outline-none focus:border-[#FF6B00]" />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-black text-[#0F172A]">Mặt sau</label>
+                            <textarea rows={3} value={card.back || ""} onChange={(e) => {
+                              const cards = [...(detailForm.cards || [])];
+                              cards[index] = { ...cards[index], back: e.target.value };
+                              setDetailForm({ ...detailForm, cards });
+                            }} className="w-full rounded-lg border border-[#D8DFEA] px-4 py-3 text-sm font-semibold outline-none focus:border-[#FF6B00]" />
+                          </div>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => setDetailForm({ ...detailForm, cards: [...(detailForm.cards || []), { front: "", back: "" }] })} className="rounded-lg border border-[#D8DFEA] px-4 py-3 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">Thêm thẻ</button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {(detailForm.questions || []).map((question: any, questionIndex: number) => (
+                        <div key={questionIndex} className="rounded-xl border border-[#E6EAF0] p-4">
+                          <label className="mb-2 block text-sm font-black text-[#0F172A]">Câu hỏi {questionIndex + 1}</label>
+                          <textarea rows={2} value={question.question || ""} onChange={(e) => {
+                            const questions = [...(detailForm.questions || [])];
+                            questions[questionIndex] = { ...questions[questionIndex], question: e.target.value };
+                            setDetailForm({ ...detailForm, questions });
+                          }} className="w-full rounded-lg border border-[#D8DFEA] px-4 py-3 text-sm font-semibold outline-none focus:border-[#FF6B00]" />
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            {(question.options || []).map((option: string, optionIndex: number) => (
+                              <input key={optionIndex} value={option || ""} onChange={(e) => {
+                                const questions = [...(detailForm.questions || [])];
+                                const options = [...(questions[questionIndex].options || [])];
+                                options[optionIndex] = e.target.value;
+                                questions[questionIndex] = { ...questions[questionIndex], options };
+                                setDetailForm({ ...detailForm, questions });
+                              }} placeholder={`Đáp án ${String.fromCharCode(65 + optionIndex)}`} className="h-11 rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none focus:border-[#FF6B00]" />
+                            ))}
+                          </div>
+                          <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="mb-2 block text-sm font-black text-[#0F172A]">Đáp án đúng</label>
+                              <select value={Number(question.correctAnswer || 0)} onChange={(e) => {
+                                const questions = [...(detailForm.questions || [])];
+                                questions[questionIndex] = { ...questions[questionIndex], correctAnswer: Number(e.target.value) };
+                                setDetailForm({ ...detailForm, questions });
+                              }} className="h-11 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none focus:border-[#FF6B00]">
+                                <option value={0}>A</option>
+                                <option value={1}>B</option>
+                                <option value={2}>C</option>
+                                <option value={3}>D</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-sm font-black text-[#0F172A]">Giải thích</label>
+                              <input value={question.explanation || ""} onChange={(e) => {
+                                const questions = [...(detailForm.questions || [])];
+                                questions[questionIndex] = { ...questions[questionIndex], explanation: e.target.value };
+                                setDetailForm({ ...detailForm, questions });
+                              }} className="h-11 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none focus:border-[#FF6B00]" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => setDetailForm({
+                        ...detailForm,
+                        questions: [...(detailForm.questions || []), { question: "", options: ["", "", "", ""], correctAnswer: 0, explanation: "" }],
+                      })} className="rounded-lg border border-[#D8DFEA] px-4 py-3 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">Thêm câu hỏi</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 border-t border-[#E6EAF0] pt-6">
+                <button type="button" onClick={closeDetailModal} className="h-11 rounded-lg border border-[#D8DFEA] px-5 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">Hủy</button>
+                <button type="submit" className="h-11 rounded-lg bg-[#FF4D12] px-5 text-sm font-black text-white transition hover:bg-[#E6420C]">Lưu</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {detailPreview && (
+        <div className="fixed inset-0 z-[135] flex items-center justify-center bg-[#0F172A]/70 p-6 backdrop-blur-sm">
+          <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#E6EAF0] px-8 py-5">
+              <div>
+                <h2 className="text-2xl font-black text-[#0F172A]">{detailPreview.item.title}</h2>
+                <p className="mt-2 text-sm font-semibold text-[#667085]">
+                  {detailPreview.kind === "material" ? "Preview tài liệu" : detailPreview.kind === "flashcard" ? "Preview flashcard" : detailPreview.kind === "quiz" ? "Preview quiz" : "Preview bài thi"}
+                </p>
+              </div>
+              <button onClick={() => setDetailPreview(null)} className="rounded-lg p-2 text-[#667085] transition hover:bg-[#F8F9FB]"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="max-h-[78vh] overflow-y-auto p-8">
+              {detailPreview.kind === "material" ? (
+                <iframe title={detailPreview.item.title} src={materialPreviewUrl(detailPreview.item)} className="h-[72vh] w-full rounded-xl border border-[#E6EAF0]" />
+              ) : detailPreview.kind === "flashcard" ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {(parseLearningContent(detailPreview.item).cards || []).map((card: any, index: number) => (
+                    <div key={index} className="rounded-xl border border-[#E6EAF0] p-5">
+                      <p className="text-xs font-black uppercase tracking-[0.2em] text-[#98A2B3]">Mặt trước</p>
+                      <p className="mt-3 text-base font-bold text-[#0F172A]">{card.front}</p>
+                      <p className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-[#98A2B3]">Mặt sau</p>
+                      <p className="mt-3 text-sm font-medium leading-6 text-[#475569]">{card.back}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {(parseLearningContent(detailPreview.item).questions || []).map((question: any, questionIndex: number) => (
+                    <div key={questionIndex} className="rounded-xl border border-[#E6EAF0] p-5">
+                      <p className="text-lg font-black text-[#0F172A]">Câu {questionIndex + 1}. {question.question}</p>
+                      <div className="mt-4 grid gap-3">
+                        {(question.options || []).map((option: string, optionIndex: number) => (
+                          <div key={optionIndex} className={`rounded-lg px-4 py-3 text-sm ${Number(question.correctAnswer) === optionIndex ? "bg-green-50 font-bold text-green-700" : "bg-[#F8FAFC] text-[#475569]"}`}>
+                            {String.fromCharCode(65 + optionIndex)}. {option}
+                          </div>
+                        ))}
+                      </div>
+                      {question.explanation && <p className="mt-4 text-sm font-medium text-[#667085]">Giải thích: {question.explanation}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && modalType === "course" && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0F172A]/55 p-6 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="flex max-h-[92vh] w-full max-w-[1320px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-[#E6EAF0] px-10 py-7">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-[#0F172A]">{editItem ? "Cập nhật khóa học" : "Tạo khóa học mới"}</h2>
+                <p className="mt-2 text-sm font-semibold text-[#667085]">Thêm khóa học mới vào hệ thống EduSmart</p>
+              </div>
+              <button onClick={handleCloseModal} className="rounded-lg p-2 text-[#475569] transition hover:bg-[#F8F9FB]"><X className="h-6 w-6" /></button>
+            </div>
+
+            <form onSubmit={handleModalSubmit} className="min-h-0 flex-1 overflow-y-auto">
+              <div className="grid min-h-[660px] grid-cols-1 lg:grid-cols-[360px_1fr]">
+                <aside className="border-r border-[#E6EAF0] p-8">
+                  {[
+                    { number: "1.", title: "Thông tin cơ bản", desc: "Nhập thông tin tổng quan về khóa học", icon: BookOpen, active: true },
+                    { number: "2.", title: "Mô tả khóa học", desc: "Giới thiệu chi tiết về nội dung khóa học", icon: FileText, onClick: () => setIsCourseDescriptionOpen(true) },
+                    { number: "3.", title: "Giảng viên", desc: "Chọn giảng viên phụ trách khóa học", icon: UserRound },
+                  ].map((item) => (
+                    <button type="button" key={item.title} onClick={item.onClick} className={`mb-5 flex w-full gap-4 rounded-lg p-5 text-left transition hover:bg-[#FFF7F3] ${item.active ? "bg-[#FFF2ED] text-[#FF4D12]" : "text-[#0F172A]"}`}>
+                      <item.icon className="mt-0.5 h-6 w-6 shrink-0" />
+                      <div>
+                        <p className="text-sm font-black">{item.number} {item.title}</p>
+                        <p className="mt-3 text-sm font-medium text-[#667085]">{item.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </aside>
+
+                <main className="p-8">
+                  <h3 className="mb-6 text-lg font-black text-[#0F172A]">1. Thông tin cơ bản</h3>
+                  <div className="grid gap-7 xl:grid-cols-2">
+                    <div className="space-y-7">
+                      <div>
+                        <label className="mb-3 block text-sm font-black text-[#0F172A]">Tên khóa học <span className="text-[#FF4D12]">*</span></label>
+                        <div className="relative">
+                          <input required maxLength={100} value={formData.title || ""} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="Nhập tên khóa học" className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 pr-16 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#667085]">{(formData.title || "").length}/100</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-3 block text-sm font-black text-[#0F172A]">Video giới thiệu (URL)</label>
+                        <input value={formData.introVideoUrl || ""} onChange={(e) => setFormData({...formData, introVideoUrl: e.target.value})} placeholder="https://www.youtube.com/watch?v=..." className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                        <p className="mt-3 text-sm font-medium text-[#667085]">Thêm link video giới thiệu khóa học (nếu có)</p>
+                      </div>
+
+                      <div className="grid gap-5 md:grid-cols-1">
+                        <div>
+                          <label className="mb-3 block text-sm font-black text-[#0F172A]">Ng??n ng??? gi???ng d???y</label>
+                          <select value={formData.language || "Ti???ng Vi???t"} onChange={(e) => setFormData({...formData, language: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]">
+                            <option value="Ti???ng Vi???t">Ti???ng Vi???t</option>
+                            <option value="Ti???ng Anh">Ti???ng Anh</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-5 md:grid-cols-2">
+                        <div>
+                          <label className="mb-3 block text-sm font-black text-[#0F172A]">Ngày bắt đầu</label>
+                          <input type="date" value={formData.startDate || ""} onChange={(e) => setFormData({...formData, startDate: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                        </div>
+                        <div>
+                          <label className="mb-3 block text-sm font-black text-[#0F172A]">Số lượng học viên dự kiến</label>
+                          <input type="number" min={0} value={formData.expectedStudentCount || ""} onChange={(e) => setFormData({...formData, expectedStudentCount: e.target.value})} placeholder="Nhập số lượng học viên dự kiến" className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                          <p className="mt-3 text-sm font-medium text-[#667085]">Dùng để thống kê và hiển thị trên trang khóa học</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-7">
+                      <div>
+                        <label className="mb-3 block text-sm font-black text-[#0F172A]">Mã khóa học <span className="text-[#FF4D12]">*</span></label>
+                        <input required value={formData.code || ""} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase().replace(/\s+/g, "-")})} placeholder="VD: SINH-HOC-12" className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                        <p className="mt-3 text-sm font-medium text-[#667085]">Mã viết hoa, không dấu, không khoảng cách</p>
+                      </div>
+
+                      <div>
+                        <label className="mb-3 block text-sm font-black text-[#0F172A]">Hình ảnh đại diện <span className="text-[#FF4D12]">*</span></label>
+                        <label className="flex h-[146px] cursor-pointer flex-col items-center justify-center rounded-lg border border-[#D8DFEA] bg-[#FBFCFE] text-center transition hover:border-[#FF6B00]">
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onloadend = () => setFormData({...formData, avatarUrl: reader.result as string});
+                            reader.readAsDataURL(file);
+                          }} />
+                          <BookMarked className="mb-3 h-9 w-9 text-[#667085]" />
+                          <span className="text-sm font-semibold text-[#667085]">{formData.avatarUrl ? "Đã chọn hình ảnh" : "Kéo thả hình ảnh vào đây"}</span>
+                          <span className="mt-2 text-sm font-medium text-[#667085]">hoặc nhấp để chọn tệp</span>
+                          <span className="mt-4 text-xs font-medium text-[#667085]">Định dạng: JPG, PNG, WebP. Kích thước tối thiểu: 1200x630px</span>
+                        </label>
+                        <input value={formData.avatarUrl || ""} onChange={(e) => setFormData({...formData, avatarUrl: e.target.value})} placeholder="Hoặc nhập URL hình ảnh" className="mt-3 h-11 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                      </div>
+
+                      <div className="grid gap-5 md:grid-cols-2">
+                        <div>
+                          <label className="mb-3 block text-sm font-black text-[#0F172A]">Ngày kết thúc</label>
+                          <input type="date" value={formData.endDate || ""} onChange={(e) => setFormData({...formData, endDate: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                        </div>
+                        <div>
+                          <label className="mb-3 block text-sm font-black text-[#0F172A]">Trạng thái</label>
+                          <label className="flex h-12 items-center gap-3">
+                            <input type="checkbox" checked={(formData.status || "Published") === "Published"} onChange={(e) => setFormData({...formData, status: e.target.checked ? "Published" : "Hidden"})} className="h-5 w-5 accent-green-500" />
+                            <span className="text-sm font-black text-[#0F172A]">Xuất bản</span>
+                          </label>
+                          <p className="text-sm font-medium text-[#667085]">Khóa học sẽ hiển thị với học viên</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="xl:col-span-2">
+                      <h3 className="mb-4 text-lg font-black text-[#0F172A]">3. Giảng viên</h3>
+                      <select value={formData.teacherId || ""} onChange={(e) => setFormData({...formData, teacherId: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]">
+                        <option value="">Chọn giảng viên phụ trách khóa học</option>
+                        {users.filter((user) => roleToValue(user.role) === 1).map((teacher) => (
+                          <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </main>
+              </div>
+
+              <div className="flex justify-end gap-5 border-t border-[#E6EAF0] px-8 py-5">
+                <button type="submit" value="Draft" className="flex h-12 items-center gap-2 rounded-lg border border-[#D8DFEA] bg-white px-6 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]"><FileText className="h-4 w-4" /> Lưu nháp</button>
+                <button type="button" onClick={handleCloseModal} className="h-12 rounded-lg border border-[#D8DFEA] bg-white px-9 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">Hủy</button>
+                <button type="submit" className="flex h-12 items-center gap-2 rounded-lg bg-[#FF4D12] px-9 text-sm font-black text-white transition hover:bg-[#E6420C]">Tiếp tục <ChevronRight className="h-5 w-5" /></button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && modalType === "course" && isCourseDescriptionOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[#0F172A]/60 p-6 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="flex max-h-[86vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-[#E6EAF0] px-8 py-6">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-[#0F172A]">Mô tả khóa học</h2>
+                <p className="mt-2 text-sm font-semibold text-[#667085]">Nhập phần giới thiệu chi tiết về nội dung khóa học.</p>
+              </div>
+              <button type="button" onClick={() => setIsCourseDescriptionOpen(false)} className="rounded-lg p-2 text-[#475569] transition hover:bg-[#F8F9FB]">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-8">
+              <RichTextEditor value={formData.description || ""} onChange={(html) => setFormData({...formData, description: html})} />
+            </div>
+            <div className="flex justify-end gap-4 border-t border-[#E6EAF0] px-8 py-5">
+              <button type="button" onClick={() => setFormData({...formData, description: ""})} className="h-11 rounded-lg border border-[#D8DFEA] bg-white px-6 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">
+                Xóa nội dung
+              </button>
+              <button type="button" onClick={() => setIsCourseDescriptionOpen(false)} className="h-11 rounded-lg bg-[#FF4D12] px-8 text-sm font-black text-white transition hover:bg-[#E6420C]">
+                Lưu mô tả
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && modalType === "teacher" && (
+        <div className="admin-modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-5 animate-in fade-in duration-200">
+          <div className="admin-modal-shell max-h-[94vh] w-full max-w-[1280px] overflow-hidden rounded-[28px]">
+            <form onSubmit={handleModalSubmit} className="flex max-h-[94vh] flex-col">
+              <div className="flex items-start justify-between border-b border-[#E6EAF0] px-10 py-7">
+                <div>
+                  <h2 className="text-[40px] font-black tracking-tight text-[#0F172A]">T?o gi?ng vi?n m?i</h2>
+                  <p className="mt-2 text-lg font-medium text-[#667085]">Th?m gi?ng vi?n m?i v?o h? th?ng EduSmart</p>
+                </div>
+                <button type="button" onClick={handleCloseModal} className="rounded-2xl p-2.5 text-[#667085] transition hover:bg-[#F8F9FB] hover:text-[#0F172A]">
+                  <X className="h-8 w-8" />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto px-8 py-7">
+                <div className="grid gap-5 xl:grid-cols-[330px_minmax(0,1fr)]">
+                  <aside className="admin-modal-panel rounded-[24px] p-6">
+                    <p className="text-sm font-black uppercase tracking-[0.16em] text-[#FF5A1F]">Xem tr??c h? s?</p>
+
+                    <div className="mt-6 text-center">
+                      <div className="relative mx-auto h-[174px] w-[174px]">
+                        {formData.avatarPreview ? (
+                          <img src={formData.avatarPreview} alt="Teacher avatar" className="h-[174px] w-[174px] rounded-full object-cover border border-[#E6EAF0]" />
+                        ) : (
+                          <div className="flex h-[174px] w-[174px] items-center justify-center rounded-full border border-[#E6EAF0] bg-[linear-gradient(180deg,#F7F9FC_0%,#EEF2F7_100%)] text-[44px] font-black text-[#FF5A1F]">
+                            {getInitials(formData.fullName || "GV")}
+                          </div>
+                        )}
+                        <button type="button" onClick={() => document.getElementById('admin-teacher-avatar-input')?.click()} className="absolute bottom-1 right-1 flex h-12 w-12 items-center justify-center rounded-full border border-[#FFDCCB] bg-[#FFF4EC] text-[#FF5A1F] shadow-sm transition hover:scale-105">
+                          <Edit className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <input
+                        id="admin-teacher-avatar-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => setFormData({ ...formData, avatarFile: file, avatarPreview: reader.result as string });
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+
+                      <h3 className="mt-6 text-[28px] font-black tracking-tight text-[#0F172A]">{formData.fullName || "Gi?ng vi?n m?i"}</h3>
+                      <p className="mt-2 text-[18px] font-medium text-[#667085]">Gi?ng vi?n Sinh h?c</p>
+                    </div>
+
+                    <div className="mt-8 grid grid-cols-3 gap-3">
+                      <div className="admin-soft-stat rounded-[20px] p-4 text-center">
+                        <GraduationCap className="mx-auto h-6 w-6 text-[#FF5A1F]" />
+                        <p className="mt-4 text-[18px] font-black text-[#0F172A]">{formData.teachingExperienceYears || 0} n?m</p>
+                        <p className="mt-1 text-sm font-medium text-[#667085]">Kinh nghi?m</p>
+                      </div>
+                      <div className="admin-soft-stat rounded-[20px] p-4 text-center">
+                        <Users className="mx-auto h-6 w-6 text-[#22C55E]" />
+                        <p className="mt-4 text-[18px] font-black text-[#0F172A]">1.200+</p>
+                        <p className="mt-1 text-sm font-medium text-[#667085]">H?c sinh</p>
+                      </div>
+                      <div className="admin-soft-stat rounded-[20px] p-4 text-center">
+                        <Star className="mx-auto h-6 w-6 text-[#F59E0B]" />
+                        <p className="mt-4 text-[18px] font-black text-[#0F172A]">4.9/5</p>
+                        <p className="mt-1 text-sm font-medium text-[#667085]">??nh gi?</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-8">
+                      <p className="text-sm font-black uppercase tracking-[0.14em] text-[#667085]">Gi?i thi?u ng?n</p>
+                      <p className="mt-4 text-[15px] font-medium leading-8 text-[#3C4A5F]">
+                        {formData.shortBio || "Gi?ng vi?n c? nhi?u n?m kinh nghi?m gi?ng d?y Sinh h?c, h? tr? h?c sinh b?m s?t ch??ng tr?nh v? r?n t? duy h?c t?p r? r?ng."}
+                      </p>
+                    </div>
+                  </aside>
+
+                  <div className="admin-modal-panel overflow-hidden rounded-[24px]">
+                    <div className="admin-modal-section">
+                      <h3 className="admin-modal-section-title">1. Th?ng tin c? b?n</h3>
+                      <div className="mt-6 grid gap-5 md:grid-cols-2">
+                        <div>
+                          <label className="admin-field-label">H? v? t?n <span className="text-[#FF5A1F]">*</span></label>
+                          <input required value={formData.fullName || ""} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} className="admin-field-input" placeholder="Nguy?n V?n A" />
+                        </div>
+                        <div>
+                          <label className="admin-field-label">Ng?y sinh</label>
+                          <input type="date" value={formData.dateOfBirth || ""} onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })} className="admin-field-input" />
+                        </div>
+                        <div>
+                          <label className="admin-field-label">Email <span className="text-[#FF5A1F]">*</span></label>
+                          <input required type="email" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="admin-field-input" placeholder="nguyenvana@edusmart.vn" />
+                        </div>
+                        <div>
+                          <label className="admin-field-label">Gi?i t?nh</label>
+                          <select value={formData.gender || "Nam"} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} className="admin-field-select">
+                            <option value="Nam">Nam</option>
+                            <option value="N?">N?</option>
+                            <option value="Kh?c">Kh?c</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="admin-field-label">S? ?i?n tho?i</label>
+                          <input value={formData.phoneNumber || ""} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} className="admin-field-input" placeholder="0987 654 321" />
+                        </div>
+                        <div>
+                          <label className="admin-field-label">??a ch?</label>
+                          <input value={formData.address || ""} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="admin-field-input" placeholder="H? N?i, Vi?t Nam" />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="admin-field-label">M?t kh?u <span className="text-[#FF5A1F]">*</span></label>
+                          <input required type="password" value={formData.password || ""} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="admin-field-input" placeholder="Nh?p m?t kh?u" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="admin-modal-section">
+                      <h3 className="admin-modal-section-title">2. Th?ng tin gi?ng d?y</h3>
+                      <div className="mt-6 grid gap-5 md:grid-cols-[300px_minmax(0,1fr)]">
+                        <div>
+                          <label className="admin-field-label">Kinh nghi?m gi?ng d?y (n?m) <span className="text-[#FF5A1F]">*</span></label>
+                          <input type="number" min={0} value={formData.teachingExperienceYears || 0} onChange={(e) => setFormData({ ...formData, teachingExperienceYears: e.target.value })} className="admin-field-input" />
+                        </div>
+                        <div>
+                          <label className="admin-field-label">M? t? ng?n v? gi?ng vi?n</label>
+                          <textarea value={formData.shortBio || ""} onChange={(e) => setFormData({ ...formData, shortBio: e.target.value })} rows={4} className="admin-field-textarea" placeholder="Gi?ng vi?n c? nhi?u n?m kinh nghi?m gi?ng d?y Sinh h?c ? c?c c?p THPT v? luy?n thi ??i h?c..." />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="admin-modal-section">
+                      <h3 className="admin-modal-section-title">3. Th?ng tin tr?n h? th?ng</h3>
+                      <div className="mt-6 grid gap-5 md:grid-cols-2">
+                        <div>
+                          <label className="admin-field-label">Tr?ng th?i <span className="text-[#FF5A1F]">*</span></label>
+                          <select value={formData.isActive === false ? "false" : "true"} onChange={(e) => setFormData({ ...formData, isActive: e.target.value === "true" })} className="admin-field-select">
+                            <option value="true">?ang ho?t ??ng</option>
+                            <option value="false">Kh?ng ho?t ??ng</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="admin-field-label">Kh?a h?c ph? tr?ch</label>
+                          <select value={formData.assignedCourseId || ""} onChange={(e) => setFormData({ ...formData, assignedCourseId: e.target.value })} className="admin-field-select">
+                            <option value="">Ch?n kh?a h?c</option>
+                            {courses.map((course) => (
+                              <option key={course.id} value={course.id}>{course.title}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-[#E6EAF0] px-8 py-5">
+                <button type="button" className="flex h-12 items-center gap-2 rounded-xl border border-[#D8DFEA] bg-white px-6 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">
+                  <FileText className="h-4 w-4" /> L?u nh?p
+                </button>
+                <div className="flex gap-4">
+                  <button type="button" onClick={handleCloseModal} className="h-12 rounded-xl border border-[#D8DFEA] bg-white px-8 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">H?y</button>
+                  <button type="submit" className="admin-primary-btn flex h-12 items-center gap-2 rounded-xl px-8 text-sm font-black text-white transition">
+                    <CheckCircle2 className="h-4 w-4" /> T?o gi?ng vi?n
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal */}
-      {isModalOpen && (
+      {isModalOpen && modalType !== "course" && modalType !== "teacher" && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative border border-border">
             <button 
@@ -1361,3 +2433,5 @@ const stripHtml = (html: string) => {
   tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || "";
 };
+
+
