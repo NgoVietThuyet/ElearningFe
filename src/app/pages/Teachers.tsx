@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Briefcase, Facebook, GraduationCap, Linkedin, Loader2, Mail, Search, Star, Users } from "lucide-react";
 import { publicApi } from "../api/publicApi";
 
@@ -23,16 +24,17 @@ function getInitials(name: string) {
 }
 
 export default function Teachers() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
 
   useEffect(() => {
     const fetchTeachers = async () => {
       try {
         const [teachersRes, feedbackRes] = await Promise.all([
-          publicApi.getFeaturedTeachers(),
+          publicApi.getTeachers(),
           publicApi.getFeedbacks(200),
         ]);
         setTeachers(teachersRes.data);
@@ -46,6 +48,18 @@ export default function Teachers() {
 
     fetchTeachers();
   }, []);
+
+  useEffect(() => {
+    setSearchTerm(searchParams.get("search") || "");
+  }, [searchParams]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    const next = new URLSearchParams(searchParams);
+    if (value.trim()) next.set("search", value);
+    else next.delete("search");
+    setSearchParams(next, { replace: true });
+  };
 
   const filteredTeachers = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -94,7 +108,7 @@ export default function Teachers() {
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Tìm kiếm giảng viên..."
               className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-semibold outline-none focus:border-orange-200 focus:ring-4 focus:ring-orange-100 lg:w-80"
             />

@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
-import { 
-  Search, 
-  Bell, 
-  Menu, 
-  LogOut, 
-  ChevronDown,
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import {
+  Bell,
   BookOpen,
+  ChevronDown,
   GraduationCap,
+  LogOut,
+  Menu,
+  Search,
   UserRound,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { jwtDecode } from "jwt-decode";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,12 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "../ui/avatar";
-import { jwtDecode } from "jwt-decode";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { publicApi } from "../../api/publicApi";
 
 interface User {
@@ -32,7 +29,7 @@ interface User {
   email?: string;
   role?: string;
   avatarUrl?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface Notification {
@@ -40,7 +37,7 @@ interface Notification {
   title: string;
   time: string;
   unread: boolean;
-  type: 'info' | 'success' | 'warning';
+  type: "info" | "success" | "warning";
 }
 
 interface SearchCourse {
@@ -56,7 +53,6 @@ interface SearchTeacher {
   fullName: string;
   email: string;
   avatarUrl?: string | null;
-  lessonCount?: number;
 }
 
 interface NavbarProps {
@@ -74,21 +70,27 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
   const [searchCourses, setSearchCourses] = useState<SearchCourse[]>([]);
   const [searchTeachers, setSearchTeachers] = useState<SearchTeacher[]>([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
-  
+
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const decoded = jwtDecode<User>(token);
-        setUser(decoded);
-        setIsLoggedIn(true);
-        setNotifications([]);
-      } catch (error) {
-        console.error("Token decoding failed", error);
-        localStorage.removeItem("token");
-      }
+    if (!token) {
+      setIsLoggedIn(false);
+      setUser(null);
+      return;
     }
-  }, []);
+
+    try {
+      const decoded = jwtDecode<User>(token);
+      setUser(decoded);
+      setIsLoggedIn(true);
+      setNotifications([]);
+    } catch (error) {
+      console.error("Token decoding failed", error);
+      localStorage.removeItem("token");
+      setIsLoggedIn(false);
+      setUser(null);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -119,30 +121,27 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
     };
   }, [isLoggedIn]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setIsLoggedIn(false);
-    setUser(null);
-    navigate("/login");
+  const getUserDisplayName = () => {
+    if (!user) return "";
+    return user.unique_name || user.name || user.email?.split("@")[0] || "Người dùng";
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const keyword = searchTerm.trim();
-    if (!keyword) return;
-
-    const firstCourse = getSearchMatches().courses[0];
-    if (firstCourse) {
-      setSearchOpen(false);
-      navigate(`/course/${firstCourse.id}`);
-      return;
-    }
-
-    setSearchOpen(false);
-    navigate(`/courses?search=${encodeURIComponent(keyword)}`);
+  const getUserRoleLabel = () => {
+    if (!user) return "";
+    const role = user.role || user["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || "STUDENT";
+    if (role === "ADMIN") return "Quản trị viên";
+    if (role === "TEACHER") return "Giảng viên";
+    return "Học viên";
   };
 
-  const getSearchMatches = () => {
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "ES";
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const searchMatches = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     if (!keyword) return { courses: [] as SearchCourse[], teachers: [] as SearchTeacher[] };
 
@@ -159,33 +158,37 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
       .slice(0, 5);
 
     return { courses, teachers };
+  }, [searchCourses, searchTeachers, searchTerm]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsLoggedIn(false);
+    setUser(null);
+    navigate("/login");
   };
 
-  const getUserDisplayName = () => {
-    if (!user) return "";
-    const name = user.unique_name || user.name || user.email?.split("@")[0] || "Người dùng";
-    return name;
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const keyword = searchTerm.trim();
+    if (!keyword) return;
+
+    const firstCourse = searchMatches.courses[0];
+    if (firstCourse) {
+      setSearchOpen(false);
+      setSearchTerm("");
+      navigate(`/course/${firstCourse.id}`);
+      return;
+    }
+
+    setSearchOpen(false);
+    navigate(`/courses?search=${encodeURIComponent(keyword)}`);
   };
 
-  const getUserRoleLabel = () => {
-    if (!user) return "";
-    const role = user.role || user["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || "STUDENT";
-    if (role === "ADMIN") return "Quản trị viên";
-    if (role === "TEACHER") return "Giảng viên";
-    return "Học viên";
-  };
-
-  const getInitials = (name: string) => {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
-
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const unreadCount = notifications.filter((n) => n.unread).length;
   const isHomePage = location.pathname === "/";
-  const searchMatches = getSearchMatches();
   const hasSearchTerm = searchTerm.trim().length > 0;
   const hasSearchResults = searchMatches.courses.length > 0 || searchMatches.teachers.length > 0;
+
   const publicNavItems = [
     { label: "Trang chủ", path: "/" },
     { label: "Khóa học", path: "/courses" },
@@ -216,7 +219,6 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
           <div className="hidden flex-1 items-center justify-center gap-9 xl:flex">
             {publicNavItems.map((item) => {
               const active = isPublicNavActive(item.path);
-
               return (
                 <Link
                   key={item.path}
@@ -234,12 +236,12 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
 
           <div className="flex shrink-0 items-center gap-5">
             {!isHomePage && (
-            <Link to="/courses" className="relative hidden lg:block">
-              <Search className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <span className="flex h-14 w-[280px] items-center rounded-2xl border border-slate-200 bg-white pl-14 pr-5 text-base font-semibold text-slate-400">
-                Tìm kiếm khóa học...
-              </span>
-            </Link>
+              <Link to="/courses" className="relative hidden lg:block">
+                <Search className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                <span className="flex h-14 w-[280px] items-center rounded-2xl border border-slate-200 bg-white pl-14 pr-5 text-base font-semibold text-slate-400">
+                  Tìm kiếm khóa học...
+                </span>
+              </Link>
             )}
             <Link to="/login" className="rounded-2xl bg-[#ff4f12] px-8 py-4 text-base font-black text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#ea460d]">
               Đăng nhập
@@ -251,114 +253,201 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
   }
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-white/95 border-border backdrop-blur-md px-6">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-white/95 px-6 backdrop-blur-md">
       <div className="flex h-16 items-center justify-between gap-6">
-        
-        {/* Left: Sidebar Toggle & Search */}
-        <div className="flex items-center gap-4 flex-1">
-          <button 
+        <div className="flex flex-1 items-center gap-4">
+          <button
             onClick={onToggleSidebar}
-            className="p-2 rounded-md hover:bg-[#F8F9FB] text-[#667085] transition-all"
+            className="rounded-md p-2 text-[#667085] transition-all hover:bg-[#F8F9FB]"
+            aria-label="Thu gọn menu"
           >
             <Menu className="h-5 w-5" />
           </button>
 
-          {/* Search Bar */}
           {!isHomePage && (
-          <div className="hidden lg:block w-full max-w-[400px] relative">
-            <form onSubmit={handleSearch} className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#98A2B3] group-focus-within:text-[#FF6B00] transition-colors" />
-              <input
-                type="search"
-                placeholder="Tìm kiếm..."
-                className="w-full h-[38px] pl-10 pr-4 rounded-md bg-[#F8F9FB] border-none text-xs font-medium text-[#0F172A] outline-none transition-all focus:ring-4 focus:ring-orange-500/5 placeholder:text-[#98A2B3]"
-              />
-            </form>
-          </div>
+            <div className="relative hidden w-full max-w-[460px] lg:block">
+              <form onSubmit={handleSearch} className="relative group">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#98A2B3] transition-colors group-focus-within:text-[#FF6B00]" />
+                <input
+                  type="search"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setSearchOpen(true);
+                  }}
+                  onFocus={() => setSearchOpen(true)}
+                  onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
+                  placeholder="Tìm khóa học, giảng viên..."
+                  className="h-[38px] w-full rounded-md border-none bg-[#F8F9FB] pl-10 pr-4 text-xs font-medium text-[#0F172A] outline-none transition-all placeholder:text-[#98A2B3] focus:ring-4 focus:ring-orange-500/5"
+                />
+              </form>
+
+              {searchOpen && hasSearchTerm && (
+                <div className="absolute left-0 top-[46px] z-[70] w-full overflow-hidden rounded-2xl border border-[#ECEEF2] bg-white shadow-2xl">
+                  <div className="max-h-[420px] overflow-y-auto p-2">
+                    {isSearchLoading ? (
+                      <div className="px-4 py-5 text-center text-xs font-bold text-[#98A2B3]">Đang tải dữ liệu tìm kiếm...</div>
+                    ) : hasSearchResults ? (
+                      <>
+                        {searchMatches.courses.length > 0 && (
+                          <SearchGroup title="Khóa học">
+                            {searchMatches.courses.map((course) => (
+                              <SearchResultButton
+                                key={`course-${course.id}`}
+                                icon={<BookOpen className="h-4 w-4" />}
+                                iconClassName="bg-orange-50 text-[#FF6B00]"
+                                title={course.title}
+                                subtitle={course.teacherName || course.creatorName || "EduSmart"}
+                                onClick={() => {
+                                  setSearchOpen(false);
+                                  setSearchTerm("");
+                                  navigate(`/course/${course.id}`);
+                                }}
+                              />
+                            ))}
+                          </SearchGroup>
+                        )}
+
+                        {searchMatches.teachers.length > 0 && (
+                          <SearchGroup title="Giảng viên">
+                            {searchMatches.teachers.map((teacher) => (
+                              <SearchResultButton
+                                key={`teacher-${teacher.id}`}
+                                icon={
+                                  teacher.avatarUrl ? (
+                                    <img src={teacher.avatarUrl} alt={teacher.fullName} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <UserRound className="h-4 w-4" />
+                                  )
+                                }
+                                iconClassName="overflow-hidden bg-blue-50 text-blue-600"
+                                title={teacher.fullName}
+                                subtitle={teacher.email}
+                                onClick={() => {
+                                  setSearchOpen(false);
+                                  setSearchTerm("");
+                                  navigate(`/teachers?search=${encodeURIComponent(teacher.fullName)}`);
+                                }}
+                              />
+                            ))}
+                          </SearchGroup>
+                        )}
+                      </>
+                    ) : (
+                      <div className="px-4 py-5 text-center text-xs font-bold text-[#98A2B3]">Không tìm thấy khóa học hoặc giảng viên.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
-        {/* Right: Actions */}
         <div className="flex items-center gap-5">
-          
-          {/* Notifications */}
-          {isLoggedIn && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button 
-                  className="relative h-9 w-9 flex items-center justify-center rounded-md bg-[#F8F9FB] text-[#667085] hover:text-[#FF6B00] transition-all"
-                >
-                  <Bell className="h-4.5 w-4.5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-0 right-0 h-3.5 w-3.5 rounded-full bg-[#FF6B00] text-[8px] font-black text-white flex items-center justify-center border-2 border-white translate-x-1/4 -translate-y-1/4">
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 p-0 rounded-[24px] shadow-2xl border-[#ECEEF2] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                <div className="p-4 bg-[#F8F9FB] border-b border-[#ECEEF2] flex items-center justify-between">
-                  <span className="font-bold text-[#0F172A] text-sm">Thông báo</span>
-                </div>
-                <div className="max-h-[400px] overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    notifications.map((n) => (
-                      <DropdownMenuItem key={n.id} className="p-4 cursor-pointer focus:bg-[#F8F9FB] transition-colors border-b border-[#ECEEF2] last:border-0">
-                        <div className="flex gap-4">
-                          <div className="h-10 w-10 rounded-xl bg-[#FFF4EC] flex items-center justify-center shrink-0 text-[#FF6B00]">
-                            <Bell className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-[#0F172A] leading-tight mb-1">{n.title}</p>
-                            <p className="text-[11px] font-medium text-[#98A2B3] uppercase tracking-wider">{n.time}</p>
-                          </div>
-                        </div>
-                      </DropdownMenuItem>
-                    ))
-                  ) : (
-                    <div className="p-6 text-center text-xs font-bold text-[#98A2B3]">
-                      Chưa có thông báo.
-                    </div>
-                  )}
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {/* User Profile */}
           <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 pl-2 pr-3 py-1.5 rounded-md hover:bg-[#F8F9FB] transition-all outline-none group">
-                  <Avatar className="h-8 w-8 rounded-md border border-border overflow-hidden">
-                    <AvatarImage src={user?.avatarUrl} className="object-cover" />
-                    <AvatarFallback className="bg-[#FFF4EC] text-[#FF6B00] font-bold text-[10px]">
-                      {getInitials(getUserDisplayName())}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="hidden lg:flex flex-col items-start text-left leading-none">
-                    <span className="text-sm font-bold text-[#0F172A] group-hover:text-[#FF6B00] transition-colors">
-                      {getUserDisplayName()}
-                    </span>
-                    <span className="text-[11px] font-bold text-[#98A2B3] mt-1.5 uppercase tracking-wider">
-                      {getUserRoleLabel()}
-                    </span>
-                  </div>
-                  <ChevronDown className="h-4 w-4 text-[#98A2B3] group-hover:text-[#0F172A] transition-all" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 p-2 rounded-[20px] shadow-2xl bg-white border-[#ECEEF2]">
-                <DropdownMenuLabel className="px-4 py-3 text-[11px] font-bold text-[#98A2B3] uppercase tracking-wider">Tài khoản</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-[#ECEEF2]" />
-                <DropdownMenuItem 
-                  className="rounded-[14px] py-3 px-4 cursor-pointer text-red-500 hover:bg-red-50 font-bold text-sm flex items-center gap-3"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-5 w-5" /> Đăng xuất
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="relative flex h-9 w-9 items-center justify-center rounded-md bg-[#F8F9FB] text-[#667085] transition-all hover:text-[#FF6B00]">
+                <Bell className="h-4.5 w-4.5" />
+                {unreadCount > 0 && (
+                  <span className="absolute right-0 top-0 flex h-3.5 w-3.5 translate-x-1/4 -translate-y-1/4 items-center justify-center rounded-full border-2 border-white bg-[#FF6B00] text-[8px] font-black text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 overflow-hidden rounded-[24px] border-[#ECEEF2] p-0 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#ECEEF2] bg-[#F8F9FB] p-4">
+                <span className="text-sm font-bold text-[#0F172A]">Thông báo</span>
+              </div>
+              <div className="max-h-[400px] overflow-y-auto">
+                {notifications.length > 0 ? (
+                  notifications.map((n) => (
+                    <DropdownMenuItem key={n.id} className="cursor-pointer border-b border-[#ECEEF2] p-4 transition-colors last:border-0 focus:bg-[#F8F9FB]">
+                      <div className="flex gap-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF4EC] text-[#FF6B00]">
+                          <Bell className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="mb-1 text-sm font-bold leading-tight text-[#0F172A]">{n.title}</p>
+                          <p className="text-[11px] font-medium uppercase tracking-wider text-[#98A2B3]">{n.time}</p>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-xs font-bold text-[#98A2B3]">Chưa có thông báo.</div>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="group flex items-center gap-3 rounded-md py-1.5 pl-2 pr-3 outline-none transition-all hover:bg-[#F8F9FB]">
+                <Avatar className="h-8 w-8 overflow-hidden rounded-md border border-border">
+                  <AvatarImage src={user?.avatarUrl} className="object-cover" />
+                  <AvatarFallback className="bg-[#FFF4EC] text-[10px] font-bold text-[#FF6B00]">
+                    {getInitials(getUserDisplayName())}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="hidden flex-col items-start text-left leading-none lg:flex">
+                  <span className="text-sm font-bold text-[#0F172A] transition-colors group-hover:text-[#FF6B00]">{getUserDisplayName()}</span>
+                  <span className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-[#98A2B3]">{getUserRoleLabel()}</span>
+                </div>
+                <ChevronDown className="h-4 w-4 text-[#98A2B3] transition-all group-hover:text-[#0F172A]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-[20px] border-[#ECEEF2] bg-white p-2 shadow-2xl">
+              <DropdownMenuLabel className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#98A2B3]">Tài khoản</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-[#ECEEF2]" />
+              <DropdownMenuItem
+                className="flex cursor-pointer items-center gap-3 rounded-[14px] px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-5 w-5" /> Đăng xuất
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </nav>
+  );
+}
+
+function SearchGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="py-1">
+      <div className="px-3 py-2 text-[11px] font-black uppercase tracking-wider text-[#98A2B3]">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function SearchResultButton({
+  icon,
+  iconClassName,
+  title,
+  subtitle,
+  onClick,
+}: {
+  icon: ReactNode;
+  iconClassName: string;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-[#F8F9FB]"
+    >
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconClassName}`}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-black text-[#0F172A]">{title}</span>
+        <span className="mt-1 block truncate text-xs font-semibold text-[#667085]">{subtitle}</span>
+      </span>
+    </button>
   );
 }

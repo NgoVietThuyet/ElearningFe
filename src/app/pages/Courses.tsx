@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import {
   BookOpen,
   ChevronLeft,
@@ -49,9 +49,10 @@ function CourseThumb({ course, index }: { course: Course; index: number }) {
 }
 
 export default function Courses() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [sortBy, setSortBy] = useState("newest");
 
   useEffect(() => {
@@ -69,13 +70,25 @@ export default function Courses() {
     fetchCourses();
   }, []);
 
+  useEffect(() => {
+    setSearchTerm(searchParams.get("search") || "");
+  }, [searchParams]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    const next = new URLSearchParams(searchParams);
+    if (value.trim()) next.set("search", value);
+    else next.delete("search");
+    setSearchParams(next, { replace: true });
+  };
+
   const filteredCourses = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
     const result = courses.filter(
       (course) =>
         course.title.toLowerCase().includes(normalized) ||
-        course.description.toLowerCase().includes(normalized) ||
-        course.creatorName.toLowerCase().includes(normalized),
+        (course.description || "").toLowerCase().includes(normalized) ||
+        (course.creatorName || "").toLowerCase().includes(normalized),
     );
 
     return [...result].sort((a, b) => {
@@ -108,7 +121,7 @@ export default function Courses() {
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   placeholder="Tìm khóa học..."
                   className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-semibold outline-none focus:border-orange-200 focus:ring-4 focus:ring-orange-100 sm:w-64"
                 />
