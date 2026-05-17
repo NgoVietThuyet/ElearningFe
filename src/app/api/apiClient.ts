@@ -1,14 +1,16 @@
 import axios from "axios";
+import { installApiCache } from "./apiCache";
 
 const apiClient = axios.create({
-  // / baseURL: "http://localhost:5081", // Backend URL from launchSettings.json
-  baseURL: "https://elearningbe-nq9w.onrender.com", // Backend URL from Render
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5081",
+  //baseURL: "https://elearning-be-8pwa.onrender.com",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Attach JWT token to every request
+installApiCache(apiClient);
+
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -20,7 +22,6 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Handle 401 Unauthorized responses globally — clear token and redirect to login
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

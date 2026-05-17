@@ -71,6 +71,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       { id: "admin-feedback", label: "Feedback", icon: MessageSquare, path: "/admin?section=feedback" },
     ],
     TEACHER: [
+      { id: "teacher-courses", label: "Khóa học", icon: BookOpen, path: "/teacher?section=courses" },
       { id: "teacher-dash", label: "Tổng quan", icon: LayoutDashboard, path: "/teacher" },
       { id: "teacher-students", label: "Học sinh", icon: Users2, path: "/teacher?section=students" },
       { id: "teacher-lessons", label: "Bài giảng", icon: FileText, path: "/teacher?section=lessons" },

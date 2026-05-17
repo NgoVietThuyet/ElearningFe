@@ -29,6 +29,7 @@ interface User {
   email?: string;
   role?: string;
   avatarUrl?: string;
+  AvatarUrl?: string;
   [key: string]: unknown;
 }
 
@@ -73,6 +74,7 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    console.log("Token exists:", !!token);
     if (!token) {
       setIsLoggedIn(false);
       setUser(null);
@@ -81,6 +83,8 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
 
     try {
       const decoded = jwtDecode<User>(token);
+      console.log("Decoded user:", decoded);
+      console.log("User keys:", Object.keys(decoded));
       setUser(decoded);
       setIsLoggedIn(true);
       setNotifications([]);
@@ -123,7 +127,14 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
 
   const getUserDisplayName = () => {
     if (!user) return "";
-    return user.unique_name || user.name || user.email?.split("@")[0] || "Người dùng";
+    return (
+      user.name ||
+      (user["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] as string) ||
+      user.unique_name ||
+      user.email?.split("@")[0] ||
+      (user["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] as string)?.split("@")[0] ||
+      "Người dùng"
+    );
   };
 
   const getUserRoleLabel = () => {
@@ -223,9 +234,8 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`relative py-7 text-base font-black transition-colors ${
-                    active ? "text-[#ff4f12]" : "text-slate-500 hover:text-[#101828]"
-                  }`}
+                  className={`relative py-7 text-base font-black transition-colors ${active ? "text-[#ff4f12]" : "text-slate-500 hover:text-[#101828]"
+                    }`}
                 >
                   {item.label}
                   {active && <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-[#ff4f12]" />}
@@ -385,7 +395,7 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
             <DropdownMenuTrigger asChild>
               <button className="group flex items-center gap-3 rounded-md py-1.5 pl-2 pr-3 outline-none transition-all hover:bg-[#F8F9FB]">
                 <Avatar className="h-8 w-8 overflow-hidden rounded-md border border-border">
-                  <AvatarImage src={user?.avatarUrl} className="object-cover" />
+                  <AvatarImage src={user?.AvatarUrl || user?.avatarUrl} className="object-cover" />
                   <AvatarFallback className="bg-[#FFF4EC] text-[10px] font-bold text-[#FF6B00]">
                     {getInitials(getUserDisplayName())}
                   </AvatarFallback>

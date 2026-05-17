@@ -359,6 +359,10 @@ export default function AdminDashboard() {
         await adminApi.createUser(teacherPayload);
         await Promise.all([fetchUsers(), fetchCourses()]);
       } else if (modalType === "course") {
+        if (!formData.teacherId) {
+          toast.error("Vui lòng chọn giảng viên phụ trách khóa học.");
+          return;
+        }
         const coursePayload = {
           title: formData.title,
           description: formData.description || "",
@@ -534,7 +538,7 @@ export default function AdminDashboard() {
         `${user.fullName} ${user.email} ${user.phoneNumber || ""}`.toLowerCase().includes(keyword);
       
       const matchesRole = userRoleFilter === "all" || String(roleToValue(user.role)) === userRoleFilter;
-      const userStatus = user.isActive === false ? "Kh?ng ho?t ??ng" : "Ho?t ??ng";
+      const userStatus = user.isActive === false ? "Không hoạt động" : "Hoạt động";
       const matchesStatus = userStatusFilter === "all" || userStatus === userStatusFilter;
 
       return matchesSearch && matchesRole && matchesStatus;
@@ -595,17 +599,17 @@ export default function AdminDashboard() {
           </div>
           <div className="relative">
             <button onClick={() => setIsUserCreateMenuOpen((value) => !value)} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#FF4D12] px-6 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition-all hover:bg-[#E6420C] hover:-translate-y-0.5">
-              <Plus className="h-5 w-5" /> Th?m ng??i d?ng <ChevronDown className="h-4 w-4" />
+              <Plus className="h-5 w-5" /> Thêm người dùng <ChevronDown className="h-4 w-4" />
             </button>
             {isUserCreateMenuOpen && (
               <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-56 overflow-hidden rounded-xl border border-[#E6EAF0] bg-white shadow-2xl">
                 <button onClick={() => handleOpenModal("teacher")} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-[#0F172A] transition hover:bg-[#FFF4EC]">
                   <GraduationCap className="h-4 w-4 text-[#FF4D12]" />
-                  T?o gi?o vi?n
+                  Tạo giáo viên
                 </button>
                 <button onClick={() => handleOpenModal("user")} className="flex w-full items-center gap-3 border-t border-[#EEF2F6] px-4 py-3 text-left text-sm font-bold text-[#0F172A] transition hover:bg-[#F8F9FB]">
                   <UserPlus className="h-4 w-4 text-[#2563EB]" />
-                  T?o h?c sinh
+                  Tạo học sinh
                 </button>
               </div>
             )}
@@ -706,7 +710,7 @@ export default function AdminDashboard() {
                     <td className="px-4 py-5">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${user.isActive === false ? "bg-slate-100 text-slate-500" : "bg-green-50 text-green-600"}`}>
                         <span className={`w-1 h-1 rounded-full ${user.isActive === false ? "bg-slate-400" : "bg-green-500"}`}></span>
-                        {user.isActive === false ? "Kh??ng ho???t ?????ng" : "Ho???t ?????ng"}
+                        {user.isActive === false ? "Không hoạt động" : "Hoạt động"}
                       </span>
                     </td>
                     <td className="px-4 py-5 text-[12px] font-bold text-[#667085] whitespace-nowrap">{formatDate(user.createdAt)}</td>
@@ -2034,10 +2038,10 @@ export default function AdminDashboard() {
 
                       <div className="grid gap-5 md:grid-cols-1">
                         <div>
-                          <label className="mb-3 block text-sm font-black text-[#0F172A]">Ng??n ng??? gi???ng d???y</label>
-                          <select value={formData.language || "Ti???ng Vi???t"} onChange={(e) => setFormData({...formData, language: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]">
-                            <option value="Ti???ng Vi???t">Ti???ng Vi???t</option>
-                            <option value="Ti???ng Anh">Ti???ng Anh</option>
+                          <label className="mb-3 block text-sm font-black text-[#0F172A]">Ngôn ngữ giảng dạy</label>
+                          <select value={formData.language || "Tiếng Việt"} onChange={(e) => setFormData({...formData, language: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]">
+                            <option value="Tiếng Việt">Tiếng Việt</option>
+                            <option value="Tiếng Anh">Tiếng Anh</option>
                           </select>
                         </div>
                       </div>
@@ -2098,7 +2102,7 @@ export default function AdminDashboard() {
 
                     <div className="xl:col-span-2">
                       <h3 className="mb-4 text-lg font-black text-[#0F172A]">3. Giảng viên</h3>
-                      <select value={formData.teacherId || ""} onChange={(e) => setFormData({...formData, teacherId: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]">
+                      <select required value={formData.teacherId || ""} onChange={(e) => setFormData({...formData, teacherId: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]">
                         <option value="">Chọn giảng viên phụ trách khóa học</option>
                         {users.filter((user) => roleToValue(user.role) === 1).map((teacher) => (
                           <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>
@@ -2152,8 +2156,8 @@ export default function AdminDashboard() {
             <form onSubmit={handleModalSubmit} className="flex max-h-[94vh] flex-col">
               <div className="flex items-start justify-between border-b border-[#E6EAF0] px-10 py-7">
                 <div>
-                  <h2 className="text-[40px] font-black tracking-tight text-[#0F172A]">T?o gi?ng vi?n m?i</h2>
-                  <p className="mt-2 text-lg font-medium text-[#667085]">Th?m gi?ng vi?n m?i v?o h? th?ng EduSmart</p>
+                  <h2 className="text-[40px] font-black tracking-tight text-[#0F172A]">Tạo giảng viên mới</h2>
+                  <p className="mt-2 text-lg font-medium text-[#667085]">Thêm giảng viên mới vào hệ thống EduSmart</p>
                 </div>
                 <button type="button" onClick={handleCloseModal} className="rounded-2xl p-2.5 text-[#667085] transition hover:bg-[#F8F9FB] hover:text-[#0F172A]">
                   <X className="h-8 w-8" />
@@ -2163,7 +2167,7 @@ export default function AdminDashboard() {
               <div className="min-h-0 flex-1 overflow-y-auto px-8 py-7">
                 <div className="grid gap-5 xl:grid-cols-[330px_minmax(0,1fr)]">
                   <aside className="admin-modal-panel rounded-[24px] p-6">
-                    <p className="text-sm font-black uppercase tracking-[0.16em] text-[#FF5A1F]">Xem tr??c h? s?</p>
+                    <p className="text-sm font-black uppercase tracking-[0.16em] text-[#FF5A1F]">Xem trước hồ sơ</p>
 
                     <div className="mt-6 text-center">
                       <div className="relative mx-auto h-[174px] w-[174px]">
@@ -2193,46 +2197,46 @@ export default function AdminDashboard() {
                         }}
                       />
 
-                      <h3 className="mt-6 text-[28px] font-black tracking-tight text-[#0F172A]">{formData.fullName || "Gi?ng vi?n m?i"}</h3>
-                      <p className="mt-2 text-[18px] font-medium text-[#667085]">Gi?ng vi?n Sinh h?c</p>
+                      <h3 className="mt-6 text-[28px] font-black tracking-tight text-[#0F172A]">{formData.fullName || "Giảng viên mới"}</h3>
+                      <p className="mt-2 text-[18px] font-medium text-[#667085]">Giảng viên Sinh học</p>
                     </div>
 
                     <div className="mt-8 grid grid-cols-3 gap-3">
                       <div className="admin-soft-stat rounded-[20px] p-4 text-center">
                         <GraduationCap className="mx-auto h-6 w-6 text-[#FF5A1F]" />
-                        <p className="mt-4 text-[18px] font-black text-[#0F172A]">{formData.teachingExperienceYears || 0} n?m</p>
-                        <p className="mt-1 text-sm font-medium text-[#667085]">Kinh nghi?m</p>
+                        <p className="mt-4 text-[18px] font-black text-[#0F172A]">{formData.teachingExperienceYears || 0} năm</p>
+                        <p className="mt-1 text-sm font-medium text-[#667085]">Kinh nghiệm</p>
                       </div>
                       <div className="admin-soft-stat rounded-[20px] p-4 text-center">
                         <Users className="mx-auto h-6 w-6 text-[#22C55E]" />
                         <p className="mt-4 text-[18px] font-black text-[#0F172A]">1.200+</p>
-                        <p className="mt-1 text-sm font-medium text-[#667085]">H?c sinh</p>
+                        <p className="mt-1 text-sm font-medium text-[#667085]">Học sinh</p>
                       </div>
                       <div className="admin-soft-stat rounded-[20px] p-4 text-center">
                         <Star className="mx-auto h-6 w-6 text-[#F59E0B]" />
                         <p className="mt-4 text-[18px] font-black text-[#0F172A]">4.9/5</p>
-                        <p className="mt-1 text-sm font-medium text-[#667085]">??nh gi?</p>
+                        <p className="mt-1 text-sm font-medium text-[#667085]">Đánh giá</p>
                       </div>
                     </div>
 
                     <div className="mt-8">
-                      <p className="text-sm font-black uppercase tracking-[0.14em] text-[#667085]">Gi?i thi?u ng?n</p>
+                      <p className="text-sm font-black uppercase tracking-[0.14em] text-[#667085]">Giới thiệu ngắn</p>
                       <p className="mt-4 text-[15px] font-medium leading-8 text-[#3C4A5F]">
-                        {formData.shortBio || "Gi?ng vi?n c? nhi?u n?m kinh nghi?m gi?ng d?y Sinh h?c, h? tr? h?c sinh b?m s?t ch??ng tr?nh v? r?n t? duy h?c t?p r? r?ng."}
+                        {formData.shortBio || "Giảng viên có nhiều năm kinh nghiệm giảng dạy Sinh học, hỗ trợ học sinh bám sát chương trình và rèn tư duy học tập rõ ràng."}
                       </p>
                     </div>
                   </aside>
 
                   <div className="admin-modal-panel overflow-hidden rounded-[24px]">
                     <div className="admin-modal-section">
-                      <h3 className="admin-modal-section-title">1. Th?ng tin c? b?n</h3>
+                      <h3 className="admin-modal-section-title">1. Thông tin cơ bản</h3>
                       <div className="mt-6 grid gap-5 md:grid-cols-2">
                         <div>
-                          <label className="admin-field-label">H? v? t?n <span className="text-[#FF5A1F]">*</span></label>
-                          <input required value={formData.fullName || ""} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} className="admin-field-input" placeholder="Nguy?n V?n A" />
+                          <label className="admin-field-label">Họ và tên <span className="text-[#FF5A1F]">*</span></label>
+                          <input required value={formData.fullName || ""} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} className="admin-field-input" placeholder="Nguyễn Văn A" />
                         </div>
                         <div>
-                          <label className="admin-field-label">Ng?y sinh</label>
+                          <label className="admin-field-label">Ngày sinh</label>
                           <input type="date" value={formData.dateOfBirth || ""} onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })} className="admin-field-input" />
                         </div>
                         <div>
@@ -2240,56 +2244,56 @@ export default function AdminDashboard() {
                           <input required type="email" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="admin-field-input" placeholder="nguyenvana@edusmart.vn" />
                         </div>
                         <div>
-                          <label className="admin-field-label">Gi?i t?nh</label>
+                          <label className="admin-field-label">Giới tính</label>
                           <select value={formData.gender || "Nam"} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} className="admin-field-select">
                             <option value="Nam">Nam</option>
-                            <option value="N?">N?</option>
-                            <option value="Kh?c">Kh?c</option>
+                            <option value="Nữ">Nữ</option>
+                            <option value="Khác">Khác</option>
                           </select>
                         </div>
                         <div>
-                          <label className="admin-field-label">S? ?i?n tho?i</label>
+                          <label className="admin-field-label">Số điện thoại</label>
                           <input value={formData.phoneNumber || ""} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} className="admin-field-input" placeholder="0987 654 321" />
                         </div>
                         <div>
-                          <label className="admin-field-label">??a ch?</label>
-                          <input value={formData.address || ""} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="admin-field-input" placeholder="H? N?i, Vi?t Nam" />
+                          <label className="admin-field-label">Địa chỉ</label>
+                          <input value={formData.address || ""} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="admin-field-input" placeholder="Hà Nội, Việt Nam" />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="admin-field-label">M?t kh?u <span className="text-[#FF5A1F]">*</span></label>
-                          <input required type="password" value={formData.password || ""} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="admin-field-input" placeholder="Nh?p m?t kh?u" />
+                          <label className="admin-field-label">Mật khẩu <span className="text-[#FF5A1F]">*</span></label>
+                          <input required type="password" value={formData.password || ""} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="admin-field-input" placeholder="Nhập mật khẩu" />
                         </div>
                       </div>
                     </div>
 
                     <div className="admin-modal-section">
-                      <h3 className="admin-modal-section-title">2. Th?ng tin gi?ng d?y</h3>
+                      <h3 className="admin-modal-section-title">2. Thông tin giảng dạy</h3>
                       <div className="mt-6 grid gap-5 md:grid-cols-[300px_minmax(0,1fr)]">
                         <div>
-                          <label className="admin-field-label">Kinh nghi?m gi?ng d?y (n?m) <span className="text-[#FF5A1F]">*</span></label>
+                          <label className="admin-field-label">Kinh nghiệm giảng dạy (năm) <span className="text-[#FF5A1F]">*</span></label>
                           <input type="number" min={0} value={formData.teachingExperienceYears || 0} onChange={(e) => setFormData({ ...formData, teachingExperienceYears: e.target.value })} className="admin-field-input" />
                         </div>
                         <div>
-                          <label className="admin-field-label">M? t? ng?n v? gi?ng vi?n</label>
-                          <textarea value={formData.shortBio || ""} onChange={(e) => setFormData({ ...formData, shortBio: e.target.value })} rows={4} className="admin-field-textarea" placeholder="Gi?ng vi?n c? nhi?u n?m kinh nghi?m gi?ng d?y Sinh h?c ? c?c c?p THPT v? luy?n thi ??i h?c..." />
+                          <label className="admin-field-label">Mô tả ngắn về giảng viên</label>
+                          <textarea value={formData.shortBio || ""} onChange={(e) => setFormData({ ...formData, shortBio: e.target.value })} rows={4} className="admin-field-textarea" placeholder="Giảng viên có nhiều năm kinh nghiệm giảng dạy Sinh học ở các cấp THPT và luyện thi đại học..." />
                         </div>
                       </div>
                     </div>
 
                     <div className="admin-modal-section">
-                      <h3 className="admin-modal-section-title">3. Th?ng tin tr?n h? th?ng</h3>
+                      <h3 className="admin-modal-section-title">3. Thông tin trên hệ thống</h3>
                       <div className="mt-6 grid gap-5 md:grid-cols-2">
                         <div>
-                          <label className="admin-field-label">Tr?ng th?i <span className="text-[#FF5A1F]">*</span></label>
+                          <label className="admin-field-label">Trạng thái <span className="text-[#FF5A1F]">*</span></label>
                           <select value={formData.isActive === false ? "false" : "true"} onChange={(e) => setFormData({ ...formData, isActive: e.target.value === "true" })} className="admin-field-select">
-                            <option value="true">?ang ho?t ??ng</option>
-                            <option value="false">Kh?ng ho?t ??ng</option>
+                            <option value="true">Đang hoạt động</option>
+                            <option value="false">Không hoạt động</option>
                           </select>
                         </div>
                         <div>
-                          <label className="admin-field-label">Kh?a h?c ph? tr?ch</label>
+                          <label className="admin-field-label">Khóa học phụ trách</label>
                           <select value={formData.assignedCourseId || ""} onChange={(e) => setFormData({ ...formData, assignedCourseId: e.target.value })} className="admin-field-select">
-                            <option value="">Ch?n kh?a h?c</option>
+                            <option value="">Chọn khóa học</option>
                             {courses.map((course) => (
                               <option key={course.id} value={course.id}>{course.title}</option>
                             ))}
@@ -2303,12 +2307,12 @@ export default function AdminDashboard() {
 
               <div className="flex items-center justify-between border-t border-[#E6EAF0] px-8 py-5">
                 <button type="button" className="flex h-12 items-center gap-2 rounded-xl border border-[#D8DFEA] bg-white px-6 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">
-                  <FileText className="h-4 w-4" /> L?u nh?p
+                  <FileText className="h-4 w-4" /> Lưu nháp
                 </button>
                 <div className="flex gap-4">
-                  <button type="button" onClick={handleCloseModal} className="h-12 rounded-xl border border-[#D8DFEA] bg-white px-8 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">H?y</button>
+                  <button type="button" onClick={handleCloseModal} className="h-12 rounded-xl border border-[#D8DFEA] bg-white px-8 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">Hủy</button>
                   <button type="submit" className="admin-primary-btn flex h-12 items-center gap-2 rounded-xl px-8 text-sm font-black text-white transition">
-                    <CheckCircle2 className="h-4 w-4" /> T?o gi?ng vi?n
+                    <CheckCircle2 className="h-4 w-4" /> Tạo giảng viên
                   </button>
                 </div>
               </div>

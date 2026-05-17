@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import {
   BookOpen,
   ChevronLeft,
@@ -146,13 +146,17 @@ export default function Courses() {
             <>
               <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
                 {filteredCourses.map((course, index) => (
-                  <Link
+                  <article
                     key={course.id}
-                    to={`/course/${course.id}`}
-                    className="group overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                    className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
                   >
                     <div className="relative h-40 overflow-hidden">
                       <CourseThumb course={course} index={index} />
+                      <div className="absolute inset-0 flex items-center justify-center bg-slate-950/55 opacity-0 backdrop-blur-[2px] transition group-hover:opacity-100">
+                        <div className="rounded-full border border-white/30 bg-white/95 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#0F172A] shadow-lg">
+                          Chỉ xem trong khám phá
+                        </div>
+                      </div>
                     </div>
                     <div className="p-5">
                       <h2 className="line-clamp-1 text-lg font-black text-[#101828] transition group-hover:text-[#ff4f12]">
@@ -172,7 +176,8 @@ export default function Courses() {
                         </span>
                       </div>
                     </div>
-                  </Link>
+                    <div className="pointer-events-none absolute inset-0 bg-white/0 transition group-hover:bg-white/25" />
+                  </article>
                 ))}
               </div>
 

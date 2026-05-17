@@ -14,6 +14,7 @@ import Feedback from "./pages/Feedback";
 import Teachers from "./pages/Teachers";
 import About from "./pages/About";
 import Layout from "./components/common/Layout";
+import TakeQuiz from "./pages/TakeQuiz";
 
 export const router = createBrowserRouter([
   {
@@ -35,5 +36,9 @@ export const router = createBrowserRouter([
       { path: "feedback", Component: Feedback },
       { path: "about", Component: About },
     ],
+  },
+  {
+    path: "take-quiz/:lessonId/:testId",
+    Component: TakeQuiz,
   },
 ]);

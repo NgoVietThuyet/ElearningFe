@@ -13,6 +13,11 @@ interface LessonDetailData {
   pdfUrl?: string | null;
   documentUrl?: string | null;
   documentName?: string | null;
+  tests?: Array<{
+    id: number;
+    title: string;
+    questions?: any[];
+  }>;
 }
 
 interface Resource {
@@ -194,6 +199,36 @@ export default function LessonDetail() {
                 )}
               </div>
             </div>
+
+            {lesson.tests && lesson.tests.length > 0 && (
+              <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="border-b border-gray-200 p-6 bg-slate-50/50">
+                  <h2 className="text-sm font-black text-gray-900 uppercase tracking-wider">Bài kiểm tra / Quiz</h2>
+                  <p className="text-xs text-gray-500 mt-1">Hoàn thành bài test để đánh giá kết quả tiếp thu của bạn</p>
+                </div>
+                <div className="space-y-3 p-4">
+                  {lesson.tests.map((test) => (
+                    <button
+                      key={test.id}
+                      onClick={() => window.open(`/take-quiz/${lesson.id}/${test.id}`, "_blank")}
+                      className="flex w-full items-center gap-3 rounded-lg border border-gray-200 p-4 transition-all hover:border-orange-300 hover:bg-orange-50/15 group/test"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover/test:bg-orange-50 group-hover/test:text-orange-600 transition-colors">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-bold text-gray-900 group-hover/test:text-orange-600 transition-colors">
+                          {test.title}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {test.questions?.length || 0} câu hỏi • Trắc nghiệm
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 rounded-xl border border-orange-200 bg-orange-50 p-6">
               <h3 className="mb-3 font-black text-gray-900">Hoan thanh bai hoc</h3>

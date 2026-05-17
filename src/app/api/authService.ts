@@ -1,4 +1,5 @@
 import apiClient from "./apiClient";
+import { clearApiCache } from "./apiCache";
 
 export interface RegisterRequest {
   fullName: string;
@@ -20,15 +21,10 @@ export interface AuthResponse {
 
 export const authService = {
   register: async (data: RegisterRequest) => {
-    const formData = new FormData();
-    formData.append("fullName", data.fullName);
-    formData.append("email", data.email);
-    formData.append("password", data.password);
-    if (data.dateOfBirth) formData.append("dateOfBirth", data.dateOfBirth);
-    if (data.avatarFile) formData.append("avatarFile", data.avatarFile);
-
-    const response = await apiClient.post<{ message: string }>("/api/auth/register", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+    const response = await apiClient.post<{ message: string }>("/api/auth/register", {
+      fullName: data.fullName,
+      email: data.email,
+      password: data.password,
     });
     return response.data;
   },
@@ -39,6 +35,7 @@ export const authService = {
   },
 
   logout: () => {
+    clearApiCache();
     localStorage.removeItem("token");
   },
 };
