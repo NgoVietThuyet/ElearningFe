@@ -1,0 +1,30 @@
+{
+  "users": [
+    { "id": 101, "fullName": "Nguyễn Minh Khôi", "email": "minhkhoi@student.edusmart.vn", "role": "STUDENT" },
+    { "id": 102, "fullName": "Trần Hà My", "email": "hamy@student.edusmart.vn", "role": "STUDENT" },
+    { "id": 103, "fullName": "Lê Quang Huy", "email": "quanghuy@student.edusmart.vn", "role": "STUDENT" },
+    { "id": 104, "fullName": "Phạm Ngọc Anh", "email": "ngocanh@student.edusmart.vn", "role": "STUDENT" },
+    { "id": 105, "fullName": "Đỗ Gia Bảo", "email": "giabao@student.edusmart.vn", "role": "STUDENT" },
+    { "id": 106, "fullName": "Vũ Thanh Mai", "email": "thanhmai@student.edusmart.vn", "role": "STUDENT" },
+    { "id": 107, "fullName": "Hoàng Đức Anh", "email": "ducanh@student.edusmart.vn", "role": "STUDENT" },
+    { "id": 108, "fullName": "Bùi Khánh Linh", "email": "khanhlinh@student.edusmart.vn", "role": "STUDENT" },
+    { "id": 109, "fullName": "Ngô Minh Châu", "email": "minhchau@student.edusmart.vn", "role": "STUDENT" },
+    { "id": 110, "fullName": "Đặng Tuấn Kiệt", "email": "tuankiet@student.edusmart.vn", "role": "STUDENT" },
+    { "id": 111, "fullName": "Nguyễn Việt Thuyết", "email": "thuyet.teacher@edusmart.vn", "role": "TEACHER" },
+    { "id": 112, "fullName": "Trần Minh Anh", "email": "minhanh.teacher@edusmart.vn", "role": "TEACHER" },
+    { "id": 113, "fullName": "Phạm Thu Huyền", "email": "thuhuyen.teacher@edusmart.vn", "role": "TEACHER" }
+  ],
+  "courseProgress": [
+    { "courseId": 201, "courseTitle": "DNA và cơ chế tái bản", "completed": 62, "incomplete": 43 },
+    { "courseId": 202, "courseTitle": "Gen và truyền đạt thông tin", "completed": 48, "incomplete": 57 },
+    { "courseId": 203, "courseTitle": "Điều hòa biểu hiện gene", "completed": 74, "incomplete": 31 },
+    { "courseId": 204, "courseTitle": "Đột biến gene", "completed": 35, "incomplete": 70 },
+    { "courseId": 205, "courseTitle": "Công nghệ di truyền", "completed": 59, "incomplete": 46 }
+  ],
+  "quarterlyMembers": [
+    { "quarter": "Quý 1", "students": 86, "teachers": 5, "total": 91 },
+    { "quarter": "Quý 2", "students": 124, "teachers": 7, "total": 131 },
+    { "quarter": "Quý 3", "students": 168, "teachers": 9, "total": 177 },
+    { "quarter": "Quý 4", "students": 213, "teachers": 12, "total": 225 }
+  ]
+}

@@ -191,7 +191,7 @@ export default function Courses() {
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[10px] font-black text-orange-600">
                             {getInitials(course.teacherName || course.creatorName)}
                           </span>
-                          <span className="truncate">{course.teacherName || course.creatorName || "EduSmart"}</span>
+                          <span className="truncate">{course.teacherName || course.creatorName || "GenZBio"}</span>
                         </span>
                         <span className="flex items-center gap-1 text-amber-500">
                           <Star className="h-3.5 w-3.5 fill-current" /> 4.9

@@ -36,10 +36,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "../api/adminApi";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import RichTextEditor from "../components/common/RichTextEditor";
 import CourseFeedbackPanel from "../components/common/CourseFeedbackPanel";
 import FeedbackPage from "./Feedback";
+import { resolveMediaUrl } from "../utils/media";
+import adminMockStats from "../data/adminMockStats.json";
 
 type AdminSection = "home" | "dashboard" | "users" | "courses" | "news" | "courseDetail" | "feedback";
 
@@ -87,7 +89,6 @@ export default function AdminDashboard() {
   const [coursePendingDelete, setCoursePendingDelete] = useState<any | null>(null);
 
   // Stats State
-  const [gpaData, setGpaData] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [stats, setStats] = useState<any[]>([
     { label: "Tổng người dùng", value: "0", icon: Users, color: "orange", trend: "0%", isUp: true },
@@ -102,7 +103,6 @@ export default function AdminDashboard() {
     fetchUsers();
     fetchFeedbacks();
     fetchOverviewStats();
-    fetchGpaDistribution();
     fetchRecentActivities();
 
     const interval = setInterval(() => {
@@ -124,15 +124,6 @@ export default function AdminDashboard() {
       ]);
     } catch (err) {
       console.error("Failed to fetch overview stats", err);
-    }
-  };
-
-  const fetchGpaDistribution = async () => {
-    try {
-      const res = await adminApi.getGpaDistribution();
-      setGpaData(res.data);
-    } catch (err) {
-      console.error("Failed to fetch GPA data", err);
     }
   };
 
@@ -469,7 +460,7 @@ export default function AdminDashboard() {
     return new Date(value).toLocaleDateString("vi-VN");
   };
 
-  const getUserAvatarSrc = (user: any) => user?.avatarImageDataUrl || user?.avatarUrl || "";
+  const getUserAvatarSrc = (user: any) => resolveMediaUrl(user?.avatarImageDataUrl || user?.avatarUrl || "");
 
   const getInitials = (name?: string) => {
     const value = (name || "U").trim();
@@ -519,26 +510,22 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_400px]">
         <section className="rounded-xl border border-border bg-white p-6 shadow-sm">
           <div className="mb-6">
-            <h3 className="text-lg font-bold text-[#0F172A] tracking-tight">Phân bố kết quả học tập</h3>
-            <p className="text-xs text-[#667085] font-medium mt-0.5">Tổng hợp GPA của học sinh theo nhóm điểm.</p>
+            <h3 className="text-lg font-bold tracking-tight text-[#0F172A]">Hoàn thành khóa học</h3>
+            <p className="mt-0.5 text-xs font-medium text-[#667085]">{'Số liệu mô phỏng số học viên đã hoàn thành (>=80%) và chưa hoàn thành.'}</p>
           </div>
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={gpaData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <BarChart data={adminMockStats.courseProgress} margin={{ top: 0, right: 8, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ECEEF2" />
-                <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{ fill: "#667085", fontSize: 12, fontWeight: 600 }} />
+                <XAxis dataKey="courseTitle" axisLine={false} tickLine={false} tick={{ fill: "#667085", fontSize: 11, fontWeight: 700 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: "#667085", fontSize: 12, fontWeight: 600 }} />
                 <Tooltip
                   cursor={{ fill: "#FFF4EC" }}
-                  contentStyle={{
-                    borderRadius: "16px",
-                    border: "none",
-                    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
-                    backgroundColor: "#ffffff",
-                    padding: "12px"
-                  }}
+                  contentStyle={{ borderRadius: "14px", border: "1px solid #EEF2F6", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}
                 />
-                <Bar dataKey="count" fill="#FF6B00" radius={[8, 8, 0, 0]} barSize={40} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, fontWeight: 700 }} />
+                <Bar name="Đã hoàn thành" dataKey="completed" stackId="progress" fill="#22C55E" radius={[0, 0, 6, 6]} barSize={34} />
+                <Bar name="Chưa hoàn thành" dataKey="incomplete" stackId="progress" fill="#FF6B00" radius={[6, 6, 0, 0]} barSize={34} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -561,6 +548,34 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
+        <section className="rounded-xl border border-border bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight text-[#0F172A]">Thành viên theo quý</h3>
+              <p className="mt-0.5 text-xs font-medium text-[#667085]">Mock data tăng trưởng student và teacher theo từng quý trong năm.</p>
+            </div>
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-blue-600">2026</span>
+          </div>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={adminMockStats.quarterlyMembers} margin={{ top: 0, right: 12, left: -18, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ECEEF2" />
+                <XAxis dataKey="quarter" axisLine={false} tickLine={false} tick={{ fill: "#667085", fontSize: 12, fontWeight: 700 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#667085", fontSize: 12, fontWeight: 600 }} />
+                <Tooltip
+                  contentStyle={{ borderRadius: "14px", border: "1px solid #EEF2F6", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, fontWeight: 700 }} />
+                <Line name="Tổng thành viên" type="monotone" dataKey="total" stroke="#FF6B00" strokeWidth={3} dot={{ r: 5, fill: "#FF6B00", strokeWidth: 2, stroke: "#fff" }} />
+                <Line name="Học sinh" type="monotone" dataKey="students" stroke="#2563EB" strokeWidth={3} dot={{ r: 4, fill: "#2563EB", strokeWidth: 2, stroke: "#fff" }} />
+                <Line name="Giáo viên" type="monotone" dataKey="teachers" stroke="#8B5CF6" strokeWidth={3} dot={{ r: 4, fill: "#8B5CF6", strokeWidth: 2, stroke: "#fff" }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </section>
       </div>
@@ -1168,16 +1183,16 @@ export default function AdminDashboard() {
           </div>
 
           <div className="overflow-hidden">
-            <table className="w-full border-collapse table-auto">
+            <table className="w-full border-collapse table-fixed">
               <thead>
                 <tr className="border-b border-[#E6EAF0] bg-[#FAFBFC]/50">
-                  <th className="px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Khóa học</th>
-                  <th className="px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Giảng viên</th>
-                  <th className="px-2 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Học viên</th>
-                  <th className="px-2 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Thời lượng</th>
-                  <th className="px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Trạng thái</th>
-                  <th className="px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Ngày tạo</th>
-                  <th className="px-4 py-5 text-right text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Hành động</th>
+                  <th className="w-[320px] px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Khóa học</th>
+                  <th className="w-[160px] px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Giảng viên</th>
+                  <th className="w-[80px] px-2 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Học viên</th>
+                  <th className="w-[100px] px-2 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Thời lượng</th>
+                  <th className="w-[100px] px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Trạng thái</th>
+                  <th className="w-[120px] px-4 py-5 text-left text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Ngày tạo</th>
+                  <th className="w-[80px] px-4 py-5 text-right text-[11px] font-black uppercase tracking-wider text-[#7B8AA0]">Hành động</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E6EAF0]">
@@ -1189,7 +1204,7 @@ export default function AdminDashboard() {
                       <td className="px-4 py-5">
                         <div className="flex items-center gap-3">
                           <img src={getCourseImage(course)} alt={course.title} className="h-10 w-14 rounded-lg object-cover shadow-sm border border-slate-100 shrink-0" />
-                          <div className="max-w-[200px]">
+                          <div className="min-w-0">
                             <button onClick={() => openCourseDetail(course)} className="block truncate text-left text-[13px] font-black text-[#0F172A] transition hover:text-[#FF6B00]">{course.title}</button>
                             <p className="mt-0.5 line-clamp-1 text-[10px] font-bold text-[#98A2B3] leading-relaxed uppercase tracking-tight">{stripHtml(course.description || "")}</p>
                           </div>
@@ -1206,7 +1221,7 @@ export default function AdminDashboard() {
                               </div>
                             )}
                           </div>
-                          <span className="text-[12px] font-bold text-[#0F172A] truncate max-w-[100px]">{teacher.name}</span>
+                          <span className="min-w-0 text-[12px] font-bold text-[#0F172A] truncate">{teacher.name}</span>
                         </div>
                       </td>
                       <td className="px-2 py-5 text-[12px] font-black text-[#0F172A]">{formatNumber(course.studentCount)}</td>
@@ -1407,7 +1422,7 @@ export default function AdminDashboard() {
             <section className="rounded-xl border border-[#E6EAF0] bg-white p-7 text-center shadow-sm">
               <Award className="mx-auto h-20 w-20 text-amber-400" />
               <h3 className="mt-4 text-lg font-black text-[#0F172A]">Chứng chỉ hoàn thành</h3>
-              <p className="mt-3 text-sm font-medium leading-6 text-[#667085]">Nhận chứng chỉ của EduSmart sau khi hoàn thành tất cả bài học và bài thi.</p>
+              <p className="mt-3 text-sm font-medium leading-6 text-[#667085]">Nhận chứng chỉ của GenZBio sau khi hoàn thành tất cả bài học và bài thi.</p>
             </section>
           </div>
         </div>
@@ -1653,7 +1668,7 @@ export default function AdminDashboard() {
               <section className="rounded-xl border border-[#E6EAF0] bg-white p-7 text-center shadow-sm">
                 <Award className="mx-auto h-20 w-20 text-amber-400" />
                 <h3 className="mt-4 text-lg font-black text-[#0F172A]">Chứng chỉ hoàn thành</h3>
-                <p className="mt-3 text-sm font-medium leading-6 text-[#667085]">Nhận chứng chỉ của EduSmart sau khi hoàn thành tất cả bài học và bài thi.</p>
+                <p className="mt-3 text-sm font-medium leading-6 text-[#667085]">Nhận chứng chỉ của GenZBio sau khi hoàn thành tất cả bài học và bài thi.</p>
               </section>
             </div>
           </div>
@@ -1814,6 +1829,7 @@ export default function AdminDashboard() {
     { id: "courses", label: "Khóa học", icon: BookOpen },
     { id: "news", label: "Tin tức", icon: Newspaper },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
+
   ];
 
   const activeLabel = activeSection === "courseDetail"
@@ -2060,7 +2076,7 @@ export default function AdminDashboard() {
             <div className="flex items-start justify-between border-b border-[#E6EAF0] px-10 py-7">
               <div>
                 <h2 className="text-2xl font-black tracking-tight text-[#0F172A]">{editItem ? "Cập nhật khóa học" : "Tạo khóa học mới"}</h2>
-                <p className="mt-2 text-sm font-semibold text-[#667085]">Thêm khóa học mới vào hệ thống EduSmart</p>
+                <p className="mt-2 text-sm font-semibold text-[#667085]">Thêm khóa học mới vào hệ thống GenZBio</p>
               </div>
               <button onClick={handleCloseModal} className="rounded-lg p-2 text-[#475569] transition hover:bg-[#F8F9FB]"><X className="h-6 w-6" /></button>
             </div>
@@ -2222,7 +2238,7 @@ export default function AdminDashboard() {
               <div className="flex items-start justify-between border-b border-[#E6EAF0] px-10 py-7">
                 <div>
                   <h2 className="text-[40px] font-black tracking-tight text-[#0F172A]">Tạo giảng viên mới</h2>
-                  <p className="mt-2 text-lg font-medium text-[#667085]">Thêm giảng viên mới vào hệ thống EduSmart</p>
+                  <p className="mt-2 text-lg font-medium text-[#667085]">Thêm giảng viên mới vào hệ thống GenZBio</p>
                 </div>
                 <button type="button" onClick={handleCloseModal} className="rounded-2xl p-2.5 text-[#667085] transition hover:bg-[#F8F9FB] hover:text-[#0F172A]">
                   <X className="h-8 w-8" />
@@ -2306,7 +2322,7 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                           <label className="admin-field-label">Email <span className="text-[#FF5A1F]">*</span></label>
-                          <input required type="email" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="admin-field-input" placeholder="nguyenvana@edusmart.vn" />
+                          <input required type="email" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="admin-field-input" placeholder="nguyenvana@genzbio.vn" />
                         </div>
                         <div>
                           <label className="admin-field-label">Giới tính</label>

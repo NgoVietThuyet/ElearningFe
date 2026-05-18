@@ -92,7 +92,7 @@ export default function NewsDetail() {
 
           <div className="px-6 py-7 sm:px-10 sm:py-9">
             <span className="mb-4 inline-flex rounded-full bg-[#FFF2EA] px-4 py-2 text-xs font-black uppercase tracking-wide text-[#FF6B00]">
-              Tin tức EduSmart
+              Tin tức GenZBio
             </span>
             <h1 className="max-w-4xl text-3xl font-black leading-tight text-[#0F172A] sm:text-4xl lg:text-5xl">
               {article.title}
@@ -104,7 +104,7 @@ export default function NewsDetail() {
                   {(article.authorName || "A").charAt(0).toUpperCase()}
                 </span>
                 <div>
-                  <p className="font-black text-[#0F172A]">{article.authorName || "EduSmart"}</p>
+                  <p className="font-black text-[#0F172A]">{article.authorName || "GenZBio"}</p>
                   <p className="text-xs">Tác giả</p>
                 </div>
               </div>
@@ -143,7 +143,7 @@ export default function NewsDetail() {
               <div className="space-y-4 text-sm text-[#667085]">
                 <div className="flex items-center gap-3">
                   <User className="h-4 w-4 text-[#FF6B00]" />
-                  <span>{article.authorName || "EduSmart"}</span>
+                  <span>{article.authorName || "GenZBio"}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Calendar className="h-4 w-4 text-[#FF6B00]" />

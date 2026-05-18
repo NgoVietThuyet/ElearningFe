@@ -22,6 +22,7 @@ import {
 } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { publicApi } from "../../api/publicApi";
+import { resolveMediaUrl } from "../../utils/media";
 
 interface User {
   unique_name?: string;
@@ -223,7 +224,7 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
               <GraduationCap className="h-6 w-6" />
             </span>
             <span className="border-l border-slate-900/70 pl-3 text-[28px] font-black tracking-tight text-[#101828]">
-              Edu<span className="text-[#ff4f12]">Smart</span>
+              GenZ<span className="text-[#ff4f12]">Bio</span>
             </span>
           </Link>
 
@@ -307,7 +308,7 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
                                 icon={<BookOpen className="h-4 w-4" />}
                                 iconClassName="bg-orange-50 text-[#FF6B00]"
                                 title={course.title}
-                                subtitle={course.teacherName || course.creatorName || "EduSmart"}
+                                subtitle={course.teacherName || course.creatorName || "GenZBio"}
                                 onClick={() => {
                                   setSearchOpen(false);
                                   setSearchTerm("");
@@ -325,7 +326,7 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
                                 key={`teacher-${teacher.id}`}
                                 icon={
                                   teacher.avatarUrl ? (
-                                    <img src={teacher.avatarUrl} alt={teacher.fullName} className="h-full w-full object-cover" />
+                                    <img src={resolveMediaUrl(teacher.avatarUrl)} alt={teacher.fullName} className="h-full w-full object-cover" />
                                   ) : (
                                     <UserRound className="h-4 w-4" />
                                   )
@@ -395,7 +396,7 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
             <DropdownMenuTrigger asChild>
               <button className="group flex items-center gap-3 rounded-md py-1.5 pl-2 pr-3 outline-none transition-all hover:bg-[#F8F9FB]">
                 <Avatar className="h-8 w-8 overflow-hidden rounded-md border border-border">
-                  <AvatarImage src={user?.AvatarUrl || user?.avatarUrl} className="object-cover" />
+                  <AvatarImage src={resolveMediaUrl(user?.AvatarUrl || user?.avatarUrl)} className="object-cover" />
                   <AvatarFallback className="bg-[#FFF4EC] text-[10px] font-bold text-[#FF6B00]">
                     {getInitials(getUserDisplayName())}
                   </AvatarFallback>

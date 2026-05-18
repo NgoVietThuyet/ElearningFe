@@ -153,7 +153,7 @@ export default function Login() {
 
         {/* Bottom branding */}
         <p className="text-center text-xs text-gray-400 mt-6 font-medium">
-          EduSmart · Nền tảng học sinh học hàng đầu Việt Nam 🇻🇳
+          GenZBio · Nền tảng học sinh học hàng đầu Việt Nam 🇻🇳
         </p>
       </div>
     </div>

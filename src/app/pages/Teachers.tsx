@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Briefcase, Facebook, GraduationCap, Linkedin, Loader2, Mail, Search, Star, Users } from "lucide-react";
 import { publicApi } from "../api/publicApi";
+import { resolveMediaUrl } from "../utils/media";
 
 interface Teacher {
   id: number;
@@ -125,10 +126,10 @@ export default function Teachers() {
               {filteredTeachers.map((teacher) => (
                 <article key={teacher.id} className="rounded-2xl border border-slate-100 bg-white p-7 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
                   <div className="mx-auto flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-orange-50 text-3xl font-black text-orange-600">
-                    {teacher.avatarUrl ? <img src={teacher.avatarUrl} alt={teacher.fullName} className="h-full w-full object-cover" /> : getInitials(teacher.fullName)}
+                    {teacher.avatarUrl ? <img src={resolveMediaUrl(teacher.avatarUrl)} alt={teacher.fullName} className="h-full w-full object-cover" /> : getInitials(teacher.fullName)}
                   </div>
                   <h2 className="mt-6 text-lg font-black text-[#101828]">{teacher.fullName}</h2>
-                  <p className="mt-1 text-sm font-bold text-slate-500">Giảng viên EduSmart</p>
+                  <p className="mt-1 text-sm font-bold text-slate-500">Giảng viên GenZBio</p>
                   <div className="mt-4 flex items-center justify-center gap-1 text-xs font-bold text-slate-500">
                     <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                     4.9

@@ -178,7 +178,7 @@ export default function Signup() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6 font-medium">EduSmart · Nền tảng học sinh học hàng đầu Việt Nam</p>
+        <p className="text-center text-xs text-gray-400 mt-6 font-medium">GenZBio · Nền tảng học sinh học hàng đầu Việt Nam</p>
       </div>
     </div>
   );

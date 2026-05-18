@@ -183,10 +183,10 @@ export default function About() {
           <div className="max-w-[560px]">
             <p className="mb-4 text-sm font-black uppercase tracking-widest text-[#ff4f12]">Về chúng tôi</p>
             <h1 className="text-[42px] font-black leading-[1.12] tracking-tight text-[#101828] md:text-[54px]">
-              EduSmart - Nền tảng học Sinh học trực tuyến hiện đại và hiệu quả
+              GenZBio - Nền tảng học Sinh học trực tuyến hiện đại và hiệu quả
             </h1>
             <p className="mt-5 text-base font-medium leading-8 text-slate-600">
-              EduSmart được xây dựng với sứ mệnh mang kiến thức Sinh học đến gần hơn với mọi học sinh, giúp các em học tập chủ động, hiểu sâu và ứng dụng hiệu quả vào cuộc sống.
+              GenZBio được xây dựng với sứ mệnh mang kiến thức Sinh học đến gần hơn với mọi học sinh, giúp các em học tập chủ động, hiểu sâu và ứng dụng hiệu quả vào cuộc sống.
             </p>
 
             <div className="mt-8 space-y-5">
@@ -207,7 +207,7 @@ export default function About() {
           <div className="relative mx-auto w-full max-w-[650px]">
             <img
               src="/assets/about-biology-lab.png"
-              alt="Phòng thí nghiệm Sinh học EduSmart"
+              alt="Phòng thí nghiệm Sinh học GenZBio"
               className="aspect-[1.16/1] w-full rounded-3xl object-cover shadow-2xl shadow-slate-300/60"
             />
             <div className="absolute left-[-86px] top-[34%] hidden w-64 rounded-2xl border border-slate-100 bg-white p-7 shadow-2xl shadow-slate-300/60 lg:block">
@@ -317,7 +317,7 @@ export default function About() {
                   <Microscope className="h-11 w-11" />
                 </span>
                 <div>
-                  <h2 className="text-3xl font-black tracking-tight text-[#101828]">Sẵn sàng bắt đầu hành trình học tập cùng EduSmart?</h2>
+                  <h2 className="text-3xl font-black tracking-tight text-[#101828]">Sẵn sàng bắt đầu hành trình học tập cùng GenZBio?</h2>
                   <p className="mt-2 text-base font-medium text-slate-500">Tham gia ngay hôm nay để khám phá thế giới Sinh học đầy kỳ thú!</p>
                 </div>
               </div>
@@ -337,7 +337,7 @@ export default function About() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ff4f12] text-white">
                   <GraduationCap className="h-5 w-5" />
                 </span>
-                Edu<span className="-ml-2 text-[#ff4f12]">Smart</span>
+                GenZ<span className="-ml-2 text-[#ff4f12]">Bio</span>
               </Link>
               <p className="mt-3 text-sm font-medium text-slate-500">Học thông minh, tiến xa mỗi ngày</p>
             </div>
@@ -369,11 +369,11 @@ export default function About() {
             </div>
             <div>
               <h4 className="text-sm font-black text-[#101828]">Liên hệ</h4>
-              <p className="mt-3 text-sm font-medium text-slate-500">support@edusmart.vn</p>
+              <p className="mt-3 text-sm font-medium text-slate-500">support@genzbio.vn</p>
               <p className="mt-2 text-sm font-medium text-slate-500">1900 1234</p>
             </div>
           </div>
-          <p className="pt-4 text-center text-xs font-medium text-slate-400">© 2026 EduSmart. All rights reserved.</p>
+          <p className="pt-4 text-center text-xs font-medium text-slate-400">© 2026 GenZBio. All rights reserved.</p>
         </div>
       </footer>
     </div>

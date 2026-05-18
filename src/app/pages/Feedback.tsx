@@ -20,7 +20,7 @@ interface CourseOption {
 }
 
 function getInitials(name?: string) {
-  const safe = (name || "EduSmart").trim();
+  const safe = (name || "GenZBio").trim();
   const parts = safe.split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
@@ -88,7 +88,7 @@ export default function Feedback() {
       <div className="mx-auto max-w-[1500px] px-6 lg:px-12">
         <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#FF5A1F]">Cộng đồng EduSmart</p>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#FF5A1F]">Cộng đồng GenZBio</p>
             <h1 className="mt-3 text-4xl font-black tracking-tight text-[#101828]">Feedback từ học viên</h1>
             <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-500">
               Toàn bộ đánh giá và phản hồi về các khóa học trong hệ thống, có thể lọc theo thời gian và khóa học.

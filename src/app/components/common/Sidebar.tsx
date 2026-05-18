@@ -104,7 +104,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
            {!isCollapsed && (
              <div className="flex flex-col leading-tight">
                 <span className="text-lg font-black tracking-tighter text-[#0F172A]">
-                  EduSmart
+                  GenZBio
                 </span>
                 <span className="text-[9px] font-bold text-[#FF6B00] uppercase tracking-wider">
                   Biology Expert

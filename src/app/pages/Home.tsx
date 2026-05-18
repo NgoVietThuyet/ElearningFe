@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import { publicApi } from "../api/publicApi";
+import { resolveMediaUrl } from "../utils/media";
 
 interface Course {
   id: number;
@@ -91,7 +92,7 @@ function getInitials(name: string) {
 
 function CourseImage({ course, index }: { course: Course; index: number }) {
   if (course.avatarUrl) {
-    return <img src={course.avatarUrl} alt={course.title} className="h-full w-full object-cover" />;
+    return <img src={resolveMediaUrl(course.avatarUrl)} alt={course.title} className="h-full w-full object-cover" />;
   }
 
   const gradients = [
@@ -112,7 +113,7 @@ function TeacherAvatar({ teacher, className = "" }: { teacher: Teacher; classNam
   return (
     <div className={`overflow-hidden bg-orange-50 text-orange-600 ${className}`}>
       {teacher.avatarUrl ? (
-        <img src={teacher.avatarUrl} alt={teacher.fullName} className="h-full w-full object-cover" />
+        <img src={resolveMediaUrl(teacher.avatarUrl)} alt={teacher.fullName} className="h-full w-full object-cover" />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-lg font-black">{getInitials(teacher.fullName)}</div>
       )}
@@ -122,7 +123,7 @@ function TeacherAvatar({ teacher, className = "" }: { teacher: Teacher; classNam
 
 function NewsImage({ item }: { item: NewsItem }) {
   if (item.avatarUrl) {
-    return <img src={item.avatarUrl} alt={item.title} className="h-full w-full object-cover" />;
+    return <img src={resolveMediaUrl(item.avatarUrl)} alt={item.title} className="h-full w-full object-cover" />;
   }
 
   return (
@@ -280,7 +281,7 @@ export default function Home() {
                 <p className="text-sm font-bold leading-5 text-slate-600">
                   <span className="text-[#0f172a]">{formatNumber(stats?.totalUsers)}+ học sinh</span>
                   <br />
-                  đang học cùng EduSmart
+                  đang học cùng                   GenZBio
                 </p>
               </div>
             </div>
@@ -288,7 +289,7 @@ export default function Home() {
             <div className="relative min-h-[330px]">
               <img
                 src="/assets/about-biology-lab.png"
-                alt="EduSmart Sinh học"
+                alt="                  GenZBio Sinh học"
                 className="absolute inset-0 h-full w-full rounded-[8px] object-cover object-center shadow-xl shadow-orange-100"
               />
 
@@ -431,7 +432,7 @@ export default function Home() {
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[10px] font-black text-orange-600">
                             {getInitials(course.teacherName || course.creatorName || "ES")}
                           </span>
-                          <span className="truncate">{course.teacherName || course.creatorName || "EduSmart"}</span>
+                          <span className="truncate">{course.teacherName || course.creatorName || "                  GenZBio"}</span>
                         </span>
                         <span className="flex items-center gap-1 text-amber-500">
                           <Star className="h-3.5 w-3.5 fill-current" /> 4.9
@@ -474,7 +475,7 @@ export default function Home() {
 
             <section className="mt-5 grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
               <div className="rounded-[8px] border border-slate-100 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-black tracking-tight">Học viên nói gì về EduSmart?</h2>
+                <h2 className="text-xl font-black tracking-tight">Học viên nói gì về                   GenZBio?</h2>
                 <div className="mt-7 text-6xl font-black leading-none text-[#ff4f12]">“</div>
                 <p className="mt-1 text-sm font-semibold leading-7 text-slate-600">
                   Nội dung bài giảng dễ hiểu, trực quan và bám sát thực tế. Giảng viên tận tâm, hỗ trợ rất nhiệt tình.
@@ -482,7 +483,7 @@ export default function Home() {
                 <div className="mt-7 flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-50 text-sm font-black text-orange-600">ES</div>
                   <div>
-                    <p className="text-sm font-black">Cộng đồng EduSmart</p>
+                    <p className="text-sm font-black">Cộng đồng                   GenZBio</p>
                     <p className="text-xs font-semibold text-slate-500">{formatNumber(stats?.totalUsers)} người dùng trong hệ thống</p>
                   </div>
                 </div>
@@ -544,7 +545,7 @@ export default function Home() {
                 <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#ff4f12] text-white">
                   <GraduationCap className="h-5 w-5" />
                 </span>
-                Edu<span className="-ml-2 text-[#ff4f12]">Smart</span>
+                GenZ<span className="-ml-2 text-[#ff4f12]">Bio</span>
               </Link>
               <p className="mt-3 max-w-xs text-sm font-semibold leading-6 text-slate-500">
                 Nền tảng học Sinh học trực tuyến chất lượng cao dành cho học sinh, sinh viên và người yêu thích Sinh học.
@@ -555,14 +556,14 @@ export default function Home() {
             <div>
               <h4 className="text-sm font-black">Liên hệ</h4>
               <div className="mt-3 space-y-3 text-sm font-semibold text-slate-500">
-                <p className="flex items-center gap-2"><Mail className="h-4 w-4" /> support@edusmart.vn</p>
+                <p className="flex items-center gap-2"><Mail className="h-4 w-4" /> support@genzbio.vn</p>
                 <p className="flex items-center gap-2"><Search className="h-4 w-4" /> 028 1234 5678</p>
                 <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> TP. Hồ Chí Minh</p>
               </div>
             </div>
           </div>
           <div className="mt-6 flex flex-col justify-between gap-2 border-t border-slate-100 pt-4 text-xs font-semibold text-slate-400 md:flex-row">
-            <p>© 2026 EduSmart. Tất cả quyền được bảo lưu.</p>
+            <p>© 2026                   GenZBio. Tất cả quyền được bảo lưu.</p>
             <p>Phiên bản 1.0.0</p>
           </div>
         </footer>

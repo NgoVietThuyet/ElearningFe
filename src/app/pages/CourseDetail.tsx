@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { publicApi } from "../api/publicApi";
+import { resolveMediaUrl } from "../utils/media";
 import { adminApi } from "../api/adminApi";
 import { teacherApi } from "../api/teacherApi";
 import { toast } from "sonner";
@@ -150,7 +151,7 @@ function getLessonProgress(lesson: Lesson) {
 }
 
 function getInitials(name?: string) {
-  const safe = (name || "EduSmart").trim();
+  const safe = (name || "GenZBio").trim();
   const parts = safe.split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
@@ -186,7 +187,7 @@ function makeAbsoluteUrl(url?: string | null) {
 
 function CourseHeroImage({ course }: { course: CourseDetailData }) {
   if (course.avatarUrl) {
-    return <img src={course.avatarUrl} alt={course.title} className="absolute inset-0 h-full w-full object-cover" />;
+    return <img src={resolveMediaUrl(course.avatarUrl)} alt={course.title} className="absolute inset-0 h-full w-full object-cover" />;
   }
 
   return (
@@ -268,7 +269,7 @@ export default function CourseDetail() {
       0,
     );
   }, [course]);
-  const teacherName = course?.teacherName?.trim() || course?.creatorName || "EduSmart";
+  const teacherName = course?.teacherName?.trim() || course?.creatorName || "GenZBio";
   const previewVideoUrl = lessonForm.videoUrl.trim();
   const previewPdfName = lessonForm.pdfFile?.name;
   const previewDocName = lessonForm.documentFile?.name;
@@ -784,7 +785,7 @@ export default function CourseDetail() {
           <div className="space-y-6">
             <section className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 text-center shadow-sm">
               {course.teacherAvatarUrl ? (
-                <img src={course.teacherAvatarUrl} alt={teacherName} className="mx-auto h-24 w-24 rounded-full object-cover" />
+                <img src={resolveMediaUrl(course.teacherAvatarUrl)} alt={teacherName} className="mx-auto h-24 w-24 rounded-full object-cover" />
               ) : (
                 <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#FFF4EC] text-2xl font-black text-[#FF5A1F]">{getInitials(teacherName)}</div>
               )}

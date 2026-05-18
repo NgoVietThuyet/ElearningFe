@@ -59,6 +59,7 @@ export const adminApi = {
   // Stats
   getOverviewStats: () => apiClient.get("/api/admin/stats/overview"),
   getGpaDistribution: () => apiClient.get("/api/admin/stats/gpa-distribution"),
+  getCourseCompletion: () => apiClient.get("/api/admin/stats/course-completion"),
   getRecentActivity: () => apiClient.get("/api/admin/stats/recent-activity"),
 
   // Users
