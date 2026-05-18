@@ -21,7 +21,6 @@ import {
   Eye,
   TrendingUp,
   UserPlus,
-  MoreVertical,
   RefreshCw,
   CheckCircle2,
   Clock3,
@@ -85,6 +84,7 @@ export default function AdminDashboard() {
   const [detailModal, setDetailModal] = useState<null | { kind: "material" | "flashcard" | "quiz" | "exam"; mode: "create" | "edit"; item?: any }>(null);
   const [detailPreview, setDetailPreview] = useState<null | { kind: "material" | "flashcard" | "quiz" | "exam"; item: any }>(null);
   const [detailForm, setDetailForm] = useState<any>({});
+  const [coursePendingDelete, setCoursePendingDelete] = useState<any | null>(null);
 
   // Stats State
   const [gpaData, setGpaData] = useState<any[]>([]);
@@ -209,13 +209,14 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteCourse = async (id: number) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa khóa học này?")) return;
     try {
       await adminApi.deleteCourse(id);
       toast.success("Xóa khóa học thành công");
+      setCoursePendingDelete(null);
       fetchCourses();
-    } catch (err) {
-      toast.error("Lỗi khi xóa khóa học");
+    } catch (err: any) {
+      console.error("Failed to delete course", err);
+      toast.error(err.response?.data?.message || "Lỗi khi xóa khóa học");
     }
   };
 
@@ -820,7 +821,7 @@ export default function AdminDashboard() {
               <span className="text-[11px] font-bold text-[#98A2B3] uppercase tracking-wider">GV: {course.creatorName || "N/A"}</span>
               <div className="flex gap-2">
                 <button onClick={() => handleOpenModal("course", course)} className="p-2 text-[#98A2B3] hover:text-[#0F172A] transition-colors"><Edit className="w-5 h-5" /></button>
-                <button onClick={() => handleDeleteCourse(course.id)} className="p-2 text-[#98A2B3] hover:text-[#EF4444] transition-colors"><Trash2 className="w-5 h-5" /></button>
+                <button onClick={() => setCoursePendingDelete(course)} className="p-2 text-[#98A2B3] hover:text-[#EF4444] transition-colors"><Trash2 className="w-5 h-5" /></button>
               </div>
             </div>
           </div>
@@ -1221,7 +1222,7 @@ export default function AdminDashboard() {
                         <div className="flex justify-end gap-0.5">
                           <button onClick={() => openCourseDetail(course)} className="p-1.5 text-[#98A2B3] hover:text-[#0F172A] hover:bg-slate-50 rounded-lg transition-all"><Eye className="w-4 h-4" /></button>
                           <button onClick={() => handleOpenModal("course", course)} className="p-1.5 text-[#98A2B3] hover:text-[#0F172A] hover:bg-slate-50 rounded-lg transition-all"><Edit className="w-4 h-4" /></button>
-                          <button className="p-1.5 text-[#98A2B3] hover:text-[#0F172A] hover:bg-slate-50 rounded-lg transition-all"><MoreVertical className="w-4 h-4" /></button>
+                          <button onClick={() => setCoursePendingDelete(course)} className="p-1.5 text-[#98A2B3] hover:text-[#EF4444] hover:bg-red-50 rounded-lg transition-all"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </td>
                     </tr>
@@ -2022,6 +2023,32 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {coursePendingDelete && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[20px] border border-red-100 bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xl font-black text-[#0F172A]">Xác nhận xóa khóa học</h3>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[#667085]">
+                  Bạn có chắc chắn muốn xóa khóa học <span className="font-black text-[#0F172A]">{coursePendingDelete.title}</span>? Toàn bộ bài giảng, tài liệu, feedback và học viên đã ghi danh cũng sẽ bị xóa.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setCoursePendingDelete(null)} className="h-11 rounded-xl border border-[#E6EAF0] bg-white px-5 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">
+                Hủy
+              </button>
+              <button type="button" onClick={() => handleDeleteCourse(coursePendingDelete.id)} className="h-11 rounded-xl bg-red-600 px-5 text-sm font-black text-white shadow-lg shadow-red-500/20 transition hover:bg-red-700">
+                Xóa khóa học
+              </button>
             </div>
           </div>
         </div>
