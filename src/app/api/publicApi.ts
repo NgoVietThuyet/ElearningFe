@@ -1,8 +1,8 @@
 import axios from "axios";
 import { installApiCache } from "./apiCache";
 
-// const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5081";
-const BASE_URL = "https://elearning-be-8pwa.onrender.com";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5081";
+// const BASE_URL = "https://elearning-be-8pwa.onrender.com";
 const publicClient = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
@@ -30,10 +30,13 @@ export const publicApi = {
   getTeachers: () => publicClient.get("/api/public/teachers"),
 
   getFeedbacks: (limit: number = 100) => publicClient.get(`/api/feedback?limit=${limit}`),
+  getFeedbackThread: (courseId?: string | number) => publicClient.get(`/api/feedback/thread${courseId ? `?courseId=${courseId}` : ""}`),
+  getCourseFeedbackThread: (courseId: string | number) => publicClient.get(`/api/feedback/course/${courseId}/thread`),
   createFeedback: (data: {
     courseId: number;
     teacherId?: number | null;
     rating: number;
     content: string;
   }) => publicClient.post("/api/feedback", data),
+  createFeedbackReply: (feedbackId: number, data: { content: string }) => publicClient.post(`/api/feedback/${feedbackId}/replies`, data),
 };

@@ -28,10 +28,14 @@ const toLessonFormData = (data: any) => {
   formData.append("description", data.description ?? "");
   formData.append("videoUrl", data.videoUrl ?? "");
   formData.append("pdfUrl", data.pdfUrl ?? "");
+  if (data.arVrUrl) formData.append("arVrUrl", data.arVrUrl);
+  if (data.quizUrl) formData.append("quizUrl", data.quizUrl);
   if (data.documentUrl) formData.append("documentUrl", data.documentUrl);
   if (data.documentName) formData.append("documentName", data.documentName);
   if (data.pdfFile instanceof File) formData.append("pdfFile", data.pdfFile);
   if (data.documentFile instanceof File) formData.append("documentFile", data.documentFile);
+  if (data.lessonPlanFile instanceof File) formData.append("lessonPlanFile", data.lessonPlanFile);
+  if (data.slideFile instanceof File) formData.append("slideFile", data.slideFile);
   return formData;
 };
 
@@ -71,8 +75,15 @@ export const adminApi = {
   // News
   getAllNews: () => apiClient.get("/api/admin/news/get_all"),
   getNewsById: (id: number) => apiClient.get(`/api/admin/news/get_by_id/${id}`),
-  createNews: (data: { title: string; content: string; avatarUrl?: string | null }) => apiClient.post("/api/admin/news/create", data),
-  updateNews: (id: number, data: { title: string; content: string; avatarUrl?: string | null }) => apiClient.put(`/api/admin/news/update/${id}`, data),
+  uploadNewsImage: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient.post("/api/upload/news-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+  createNews: (data: { title: string; content: string; avatarUrl?: string | null; authorName?: string | null }) => apiClient.post("/api/admin/news/create", data),
+  updateNews: (id: number, data: { title: string; content: string; avatarUrl?: string | null; authorName?: string | null }) => apiClient.put(`/api/admin/news/update/${id}`, data),
   deleteNews: (id: number) => apiClient.delete(`/api/admin/news/delete/${id}`),
 
   // Courses

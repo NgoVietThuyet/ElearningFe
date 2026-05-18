@@ -8,6 +8,7 @@ const toLessonFormData = (data: any) => {
   formData.append("videoUrl", data.videoUrl ?? "");
   formData.append("pdfUrl", data.pdfUrl ?? "");
   if (data.arVrUrl) formData.append("arVrUrl", data.arVrUrl);
+  if (data.quizUrl) formData.append("quizUrl", data.quizUrl);
   if (data.documentUrl) formData.append("documentUrl", data.documentUrl);
   if (data.documentName) formData.append("documentName", data.documentName);
   if (data.pdfFile instanceof File) formData.append("pdfFile", data.pdfFile);
@@ -32,10 +33,6 @@ export const teacherApi = {
   }),
   createLearningItem: (lessonId: number, data: { title: string; content: string }) =>
     apiClient.post(`/api/teacher/lessons/${lessonId}/learning-items`, data),
-  enrollStudent: (courseId: number | string, email: string) => apiClient.post(`/api/teacher/courses/${courseId}/enroll`, JSON.stringify(email), {
-    headers: { "Content-Type": "application/json" }
-  }),
-  addStudent: (email: string) => apiClient.post("/api/teacher/students/add", JSON.stringify(email), {
-    headers: { "Content-Type": "application/json" }
-  }),
+  enrollStudent: (courseId: number | string, email: string) => apiClient.post(`/api/teacher/courses/${courseId}/enroll`, { email }),
+  addStudent: (email: string) => apiClient.post("/api/teacher/students/add", { email }),
 };

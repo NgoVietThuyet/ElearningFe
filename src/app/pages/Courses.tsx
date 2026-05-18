@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import {
   BookOpen,
   ChevronLeft,
@@ -7,7 +7,7 @@ import {
   Loader2,
   Search,
   SlidersHorizontal,
-  Users,
+  Star,
 } from "lucide-react";
 import { publicApi } from "../api/publicApi";
 
@@ -16,8 +16,10 @@ interface Course {
   title: string;
   description: string;
   creatorName: string;
+  teacherName?: string | null;
   lessonCount: number;
   studentCount: number;
+  durationMinutes?: number | null;
   avatarUrl?: string | null;
 }
 
@@ -46,6 +48,26 @@ function CourseThumb({ course, index }: { course: Course; index: number }) {
       <BookOpen className="h-12 w-12 opacity-80" />
     </div>
   );
+}
+
+function stripHtml(html: string) {
+  return (html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getInitials(name?: string | null) {
+  const safe = (name || "ES").trim();
+  const parts = safe.split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function formatDuration(minutes?: number | null) {
+  if (!minutes || minutes <= 0) return "Đang cập nhật";
+  const hours = Math.floor(minutes / 60);
+  const remain = minutes % 60;
+  if (!hours) return `${remain} phút`;
+  if (!remain) return `${hours} giờ`;
+  return `${hours} giờ ${remain} phút`;
 }
 
 export default function Courses() {
@@ -144,40 +166,43 @@ export default function Courses() {
             </div>
           ) : filteredCourses.length > 0 ? (
             <>
-              <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {filteredCourses.map((course, index) => (
-                  <article
+                  <Link
                     key={course.id}
-                    className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                    to={`/course/${course.id}`}
+                    className="group overflow-hidden rounded-[8px] border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                   >
                     <div className="relative h-40 overflow-hidden">
                       <CourseThumb course={course} index={index} />
-                      <div className="absolute inset-0 flex items-center justify-center bg-slate-950/55 opacity-0 backdrop-blur-[2px] transition group-hover:opacity-100">
-                        <div className="rounded-full border border-white/30 bg-white/95 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#0F172A] shadow-lg">
-                          Chỉ xem trong khám phá
-                        </div>
-                      </div>
+                      <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-[11px] font-black uppercase text-[#ff4f12] shadow-sm">
+                        {index === 0 ? "Mới" : index === 1 ? "Phổ biến" : index === 2 ? "Hot" : "Mới"}
+                      </span>
                     </div>
-                    <div className="p-5">
-                      <h2 className="line-clamp-1 text-lg font-black text-[#101828] transition group-hover:text-[#ff4f12]">
+                    <div className="p-4">
+                      <h2 className="line-clamp-1 text-base font-black text-[#0f172a] transition group-hover:text-[#ff4f12]">
                         {course.title}
                       </h2>
-                      <p className="mt-2 line-clamp-2 min-h-[40px] text-xs font-medium leading-5 text-slate-500">
-                        {course.description}
+                      <p className="mt-2 line-clamp-1 text-sm font-semibold text-slate-500">
+                        {stripHtml(course.description) || "Nền tảng kiến thức Sinh học"}
                       </p>
-                      <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-xs font-bold text-slate-500">
-                        <span className="flex items-center gap-1.5">
-                          <BookOpen className="h-4 w-4 text-orange-500" />
-                          {course.lessonCount} bài
+                      <div className="mt-4 flex items-center justify-between text-xs font-bold text-slate-500">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[10px] font-black text-orange-600">
+                            {getInitials(course.teacherName || course.creatorName)}
+                          </span>
+                          <span className="truncate">{course.teacherName || course.creatorName || "EduSmart"}</span>
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <Users className="h-4 w-4 text-blue-500" />
-                          {course.studentCount} học viên
+                        <span className="flex items-center gap-1 text-amber-500">
+                          <Star className="h-3.5 w-3.5 fill-current" /> 4.9
                         </span>
                       </div>
+                      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-bold">
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-600">Bắt đầu</span>
+                        <span className="text-slate-500">{formatDuration(course.durationMinutes)}</span>
+                      </div>
                     </div>
-                    <div className="pointer-events-none absolute inset-0 bg-white/0 transition group-hover:bg-white/25" />
-                  </article>
+                  </Link>
                 ))}
               </div>
 

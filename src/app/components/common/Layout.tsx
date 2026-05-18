@@ -28,7 +28,7 @@ export default function Layout() {
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
   return (
-    <div className="h-screen flex bg-[#F8F9FB] overflow-hidden">
+    <div className="app-shell h-screen flex bg-[#F8F9FB] overflow-hidden">
       {showSidebar && (
         <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
       )}
@@ -36,8 +36,8 @@ export default function Layout() {
         {showNavbar && (
           <Navbar onToggleSidebar={toggleSidebar} />
         )}
-        <main className={`flex-1 w-full overflow-y-auto ${useAppPadding ? "p-4 lg:p-6" : ""}`}>
-          <div className={`${useAppPadding ? "h-full" : ""}`}>
+        <main className={`app-main flex-1 w-full overflow-y-auto ${useAppPadding ? "px-4 pb-4 pt-[10px] lg:px-6 lg:pb-6 lg:pt-[10px]" : ""}`}>
+          <div className={`${useAppPadding ? "min-h-full" : ""}`}>
             <Outlet />
           </div>
         </main>

@@ -14,9 +14,12 @@ import {
   GraduationCap,
   Layers3,
   Loader2,
+  MessageSquare,
   Play,
   Plus,
+  Send,
   Sparkles,
+  Star,
   Upload,
   UserRound,
   Users,
@@ -26,12 +29,16 @@ import { publicApi } from "../api/publicApi";
 import { adminApi } from "../api/adminApi";
 import { teacherApi } from "../api/teacherApi";
 import { toast } from "sonner";
+import CourseFeedbackPanel from "../components/common/CourseFeedbackPanel";
 
 interface Lesson {
   id: number;
   title: string;
   description?: string;
   videoUrl?: string | null;
+  arVrUrl?: string | null;
+  slideUrl?: string | null;
+  lessonPlanUrl?: string | null;
   pdfUrl?: string | null;
   documentUrl?: string | null;
   documentName?: string | null;
@@ -70,7 +77,7 @@ interface CourseDetailData {
   students: Student[];
 }
 
-type TabKey = "overview" | "lessons" | "resources" | "students";
+type TabKey = "overview" | "lessons" | "resources" | "students" | "feedback";
 type AppRole = "ADMIN" | "TEACHER" | "STUDENT" | null;
 
 interface LessonFormState {
@@ -79,6 +86,18 @@ interface LessonFormState {
   videoUrl: string;
   pdfFile: File | null;
   documentFile: File | null;
+}
+
+interface CourseFeedback {
+  id: number;
+  courseId: number;
+  teacherId: number;
+  authorName: string;
+  authorRole: string;
+  rating: number;
+  content: string;
+  createdAt: string;
+  replies: CourseFeedback[];
 }
 
 function stripHtml(html: string) {
@@ -103,6 +122,31 @@ function formatDuration(minutes?: number) {
 
 function formatNumber(value?: number) {
   return new Intl.NumberFormat("vi-VN").format(value || 0);
+}
+
+function getLessonResourceIds(lesson: Lesson) {
+  return [
+    lesson.videoUrl ? "video" : null,
+    lesson.arVrUrl ? "arvr" : null,
+    lesson.slideUrl ? "slide" : null,
+    lesson.lessonPlanUrl ? "lessonplan" : null,
+    lesson.documentUrl ? "doc" : null,
+    lesson.pdfUrl ? "pdf" : null,
+  ].filter(Boolean) as string[];
+}
+
+function getLessonProgress(lesson: Lesson) {
+  const resourceIds = getLessonResourceIds(lesson);
+  if (resourceIds.length === 0) return 0;
+
+  try {
+    const raw = localStorage.getItem(`edusmart.lessonProgress.${lesson.id}`);
+    const completed = new Set<string>(raw ? JSON.parse(raw) : []);
+    const completedCount = resourceIds.filter((resourceId) => completed.has(resourceId)).length;
+    return Math.round((completedCount / resourceIds.length) * 100);
+  } catch {
+    return 0;
+  }
 }
 
 function getInitials(name?: string) {
@@ -156,6 +200,14 @@ export default function CourseDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [role, setRole] = useState<AppRole>(null);
+  const [feedbacks, setFeedbacks] = useState<CourseFeedback[]>([]);
+  const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
+  const [isFeedbackFormOpen, setIsFeedbackFormOpen] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackContent, setFeedbackContent] = useState("");
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
+  const [replyingId, setReplyingId] = useState<number | null>(null);
+  const [isSavingFeedback, setIsSavingFeedback] = useState(false);
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [isSavingLesson, setIsSavingLesson] = useState(false);
   const [lessonForm, setLessonForm] = useState<LessonFormState>({
@@ -171,6 +223,18 @@ export default function CourseDetail() {
     setCourse(res.data);
   };
 
+  const fetchFeedbacks = async (courseId: string | number) => {
+    setIsFeedbackLoading(true);
+    try {
+      const res = await publicApi.getCourseFeedbackThread(courseId);
+      setFeedbacks(res.data || []);
+    } catch (err) {
+      console.error("Failed to load course feedbacks", err);
+    } finally {
+      setIsFeedbackLoading(false);
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     setRole(getRoleFromToken(token));
@@ -182,7 +246,7 @@ export default function CourseDetail() {
 
     const load = async () => {
       try {
-        await fetchCourse(id);
+        await Promise.all([fetchCourse(id), fetchFeedbacks(id)]);
       } catch (err) {
         console.error("Failed to load course detail", err);
       } finally {
@@ -205,7 +269,6 @@ export default function CourseDetail() {
     );
   }, [course]);
   const teacherName = course?.teacherName?.trim() || course?.creatorName || "EduSmart";
-  const progress = Math.max(0, Math.min(100, Math.round(Number(course?.averageProgress || 0))));
   const previewVideoUrl = lessonForm.videoUrl.trim();
   const previewPdfName = lessonForm.pdfFile?.name;
   const previewDocName = lessonForm.documentFile?.name;
@@ -255,6 +318,54 @@ export default function CourseDetail() {
     }
   };
 
+  const submitFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!course) return;
+    if (!feedbackContent.trim()) {
+      toast.error("Vui lòng nhập nội dung nhận xét.");
+      return;
+    }
+
+    try {
+      setIsSavingFeedback(true);
+      await publicApi.createFeedback({
+        courseId: course.id,
+        teacherId: course.teacherId || undefined,
+        rating: feedbackRating,
+        content: feedbackContent.trim(),
+      });
+      setFeedbackContent("");
+      setFeedbackRating(5);
+      setIsFeedbackFormOpen(false);
+      await fetchFeedbacks(course.id);
+      toast.success("Đã gửi nhận xét.");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể gửi nhận xét.");
+    } finally {
+      setIsSavingFeedback(false);
+    }
+  };
+
+  const submitReply = async (feedbackId: number) => {
+    const content = replyDrafts[feedbackId]?.trim();
+    if (!content) {
+      toast.error("Vui lòng nhập phản hồi.");
+      return;
+    }
+
+    try {
+      setReplyingId(feedbackId);
+      await publicApi.createFeedbackReply(feedbackId, { content });
+      setReplyDrafts((drafts) => ({ ...drafts, [feedbackId]: "" }));
+      if (course) await fetchFeedbacks(course.id);
+      toast.success("Đã gửi phản hồi.");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể gửi phản hồi.");
+    } finally {
+      setReplyingId(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -280,6 +391,7 @@ export default function CourseDetail() {
     { id: "lessons", label: "Noi dung khoa hoc", count: course.lessons.length },
     { id: "resources", label: "Tai lieu", count: resourceCount },
     { id: "students", label: "Hoc vien", count: course.students.length || course.studentCount },
+    { id: "feedback", label: "Đánh giá khóa học", count: feedbacks.length },
   ];
 
   return (
@@ -291,9 +403,6 @@ export default function CourseDetail() {
             <div className="absolute inset-0 bg-gradient-to-r from-[#06120C]/80 via-[#0C1C15]/45 to-transparent" />
             <div className="relative z-10 flex min-h-[320px] flex-col justify-between p-8 text-white lg:p-10">
               <div className="flex items-start justify-between gap-4">
-                <span className="inline-flex w-fit items-center rounded-full bg-[#FF5A1F] px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-white">
-                  Khoa hoc noi bat
-                </span>
                 <div className="flex gap-3">
                   {course.introVideoUrl && (
                     <a href={course.introVideoUrl} target="_blank" rel="noreferrer" className="inline-flex h-12 items-center gap-2 rounded-full bg-white/16 px-5 text-sm font-black text-white backdrop-blur-md transition hover:bg-white/24">
@@ -301,17 +410,12 @@ export default function CourseDetail() {
                       Xem demo
                     </a>
                   )}
-                  <Link to={isLoggedIn ? "/student" : "/login"} className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-[#FF5A1F] shadow-lg">
-                    {isLoggedIn ? "Tiep tuc hoc" : "Dang nhap"}
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
                 </div>
               </div>
 
               <div>
                 <h1 className="max-w-2xl text-4xl font-black tracking-tight lg:text-5xl">{course.title}</h1>
                 <p className="mt-4 max-w-2xl text-sm font-medium leading-7 text-white/90">
-                  {descriptionText || "Khoa hoc dang duoc cap nhat mo ta chi tiet."}
                 </p>
                 <div className="mt-8 flex flex-wrap items-center gap-5">
                   <div className="flex -space-x-3">
@@ -321,7 +425,7 @@ export default function CourseDetail() {
                       </div>
                     ))}
                   </div>
-                  <div className="text-sm font-bold text-white/95">{formatNumber(course.studentCount)} hoc vien dang theo doi khoa hoc nay</div>
+                  <div className="text-sm font-bold text-white/95">{formatNumber(course.studentCount)} học viên đang theo dõi khóa học này</div>
                 </div>
               </div>
             </div>
@@ -346,16 +450,6 @@ export default function CourseDetail() {
                   <div className="max-w-[160px] text-right text-sm font-black text-[#0F172A]">{item.value}</div>
                 </div>
               ))}
-            </div>
-
-            <div className="pt-5">
-              <div className="mb-3 flex items-center justify-between text-sm font-bold">
-                <span className="text-[#667085]">Tien do khoa hoc</span>
-                <span className="text-[#FF5A1F]">{progress}% hoan thanh</span>
-              </div>
-              <div className="h-2.5 rounded-full bg-[#EEF2F6]">
-                <div className="h-full rounded-full bg-[#FF5A1F]" style={{ width: `${progress}%` }} />
-              </div>
             </div>
           </aside>
         </div>
@@ -391,29 +485,45 @@ export default function CourseDetail() {
                 </div>
                 <div className="overflow-hidden rounded-[22px] border border-[#E8EDF5]">
                   {course.lessons.length ? (
-                    course.lessons.map((lesson, index) => (
-                      <div key={lesson.id} className={`border-b border-[#E8EDF5] p-5 last:border-b-0 ${index === 0 ? "bg-[#FFF7F2]" : "bg-white"}`}>
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-start gap-4">
-                            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#FF5A1F] shadow-sm">
-                              <CirclePlay className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-black text-[#0F172A]">Bai {index + 1}. {lesson.title}</p>
-                              <p className="mt-1 text-xs font-semibold leading-6 text-[#667085]">{lesson.description || "Bai hoc dang duoc cap nhat mo ta chi tiet."}</p>
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {lesson.videoUrl && <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-xs font-black text-red-600"><Play className="h-3.5 w-3.5" /> Video</span>}
-                                {lesson.pdfUrl && <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-600"><FileText className="h-3.5 w-3.5" /> PDF</span>}
-                                {lesson.documentUrl && <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-700"><FileType2 className="h-3.5 w-3.5" /> Word</span>}
+                    course.lessons.map((lesson, index) => {
+                      const lessonProgress = getLessonProgress(lesson);
+
+                      return (
+                        <div key={lesson.id} className={`border-b border-[#E8EDF5] p-5 last:border-b-0 ${index === 0 ? "bg-[#FFF7F2]" : "bg-white"}`}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-4">
+                              <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#FF5A1F] shadow-sm">
+                                <CirclePlay className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-black text-[#0F172A]">Bai {index + 1}. {lesson.title}</p>
+                                <p className="mt-1 text-xs font-semibold leading-6 text-[#667085]">{lesson.description || "Bai hoc dang duoc cap nhat mo ta chi tiet."}</p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {lesson.videoUrl && <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-xs font-black text-red-600"><Play className="h-3.5 w-3.5" /> Video</span>}
+                                  {lesson.arVrUrl && <span className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1.5 text-xs font-black text-violet-600"><Sparkles className="h-3.5 w-3.5" /> AR/VR</span>}
+                                  {lesson.slideUrl && <span className="inline-flex items-center gap-2 rounded-full bg-purple-50 px-3 py-1.5 text-xs font-black text-purple-600"><FileType2 className="h-3.5 w-3.5" /> Slide</span>}
+                                  {lesson.lessonPlanUrl && <span className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-xs font-black text-teal-600"><FileText className="h-3.5 w-3.5" /> Giao an</span>}
+                                  {lesson.pdfUrl && <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-600"><FileText className="h-3.5 w-3.5" /> PDF</span>}
+                                  {lesson.documentUrl && <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-700"><FileType2 className="h-3.5 w-3.5" /> Word</span>}
+                                </div>
+                                <div className="mt-4 max-w-xl">
+                                  <div className="mb-2 flex items-center justify-between text-xs font-black">
+                                    <span className="text-[#667085]">Tien do bai giang</span>
+                                    <span className="text-[#FF5A1F]">{lessonProgress}%</span>
+                                  </div>
+                                  <div className="h-2 rounded-full bg-[#EEF2F6]">
+                                    <div className="h-full rounded-full bg-[#FF5A1F] transition-all" style={{ width: `${lessonProgress}%` }} />
+                                  </div>
+                                </div>
                               </div>
                             </div>
+                            <Link to={`/lesson/${lesson.id}`} className="inline-flex h-10 items-center rounded-xl border border-[#D8DFEA] px-4 text-xs font-black text-[#0F172A] transition hover:bg-[#F8FAFC]">
+                              Xem bai hoc
+                            </Link>
                           </div>
-                          <Link to={`/lesson/${lesson.id}`} className="inline-flex h-10 items-center rounded-xl border border-[#D8DFEA] px-4 text-xs font-black text-[#0F172A] transition hover:bg-[#F8FAFC]">
-                            Xem bai hoc
-                          </Link>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="p-10 text-center text-sm font-semibold text-[#667085]">Chua co bai hoc nao trong khoa hoc nay.</div>
                   )}
@@ -528,6 +638,147 @@ export default function CourseDetail() {
                 </div>
               </section>
             )}
+
+            {activeTab === "feedback" && (
+              <CourseFeedbackPanel courseId={course.id} teacherId={course.teacherId || null} canWrite={isLoggedIn} title="Đánh giá khóa học" />
+            )}
+
+            {false && activeTab === "feedback" && (
+              <section className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 shadow-sm">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="flex items-center gap-3 text-2xl font-black text-[#0F172A]">
+                      <MessageSquare className="h-6 w-6 text-[#FF5A1F]" />
+                      Đánh giá khóa học
+                    </h2>
+                    <p className="mt-2 text-sm font-semibold text-[#667085]">
+                      Toàn bộ feedback của student và teacher, sắp xếp theo thời gian.
+                    </p>
+                  </div>
+                  {role === "STUDENT" && (
+                    <button
+                      type="button"
+                      onClick={() => setIsFeedbackFormOpen((value) => !value)}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#FF5A1F] px-5 text-sm font-black text-white shadow-lg shadow-orange-500/20"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Viết nhận xét
+                    </button>
+                  )}
+                </div>
+
+                {isFeedbackFormOpen && role === "STUDENT" && (
+                  <form onSubmit={submitFeedback} className="mt-6 rounded-[24px] border border-[#FFE0D2] bg-[#FFF8F3] p-5">
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          type="button"
+                          key={star}
+                          onClick={() => setFeedbackRating(star)}
+                          className="rounded-lg p-1 transition hover:bg-white"
+                        >
+                          <Star className={`h-6 w-6 ${star <= feedbackRating ? "fill-amber-400 text-amber-400" : "text-slate-300"}`} />
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={feedbackContent}
+                      onChange={(e) => setFeedbackContent(e.target.value)}
+                      className="mt-4 min-h-[120px] w-full rounded-2xl border border-[#E8EDF5] bg-white px-4 py-3 text-sm font-semibold text-[#0F172A] outline-none transition focus:border-[#FF5A1F]"
+                      placeholder="Nhập nhận xét của bạn về khóa học..."
+                    />
+                    <div className="mt-4 flex justify-end gap-3">
+                      <button type="button" onClick={() => setIsFeedbackFormOpen(false)} className="h-11 rounded-xl border border-[#D8DFEA] bg-white px-5 text-sm font-black text-[#0F172A]">
+                        Hủy
+                      </button>
+                      <button type="submit" disabled={isSavingFeedback} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#FF5A1F] px-5 text-sm font-black text-white disabled:opacity-60">
+                        {isSavingFeedback ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        Gửi nhận xét
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="mt-7 space-y-5">
+                  {isFeedbackLoading ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-[#FF5A1F]" />
+                    </div>
+                  ) : feedbacks.length ? (
+                    feedbacks.map((item) => (
+                      <div key={item.id} className="rounded-[24px] border border-[#E8EDF5] bg-white p-5 shadow-sm">
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFF4EC] text-sm font-black text-[#FF5A1F]">
+                            {getInitials(item.authorName)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <p className="font-black text-[#0F172A]">{item.authorName}</p>
+                                <p className="mt-1 text-xs font-bold uppercase tracking-wide text-[#98A2B3]">
+                                  {item.authorRole === "TEACHER" ? "Giảng viên" : item.authorRole === "ADMIN" ? "Quản trị viên" : "Học viên"} · {new Date(item.createdAt).toLocaleString("vi-VN")}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star key={star} className={`h-4 w-4 ${star <= item.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`} />
+                                ))}
+                              </div>
+                            </div>
+                            <p className="mt-4 whitespace-pre-line text-sm font-medium leading-7 text-[#344054]">{item.content}</p>
+
+                            <div className="mt-5 space-y-3 border-l-2 border-[#FFE0D2] pl-4">
+                              {item.replies.map((reply) => (
+                                <div key={reply.id} className="rounded-2xl bg-[#F8FAFC] p-4">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-xs font-black text-[#FF5A1F]">
+                                        {getInitials(reply.authorName)}
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-black text-[#0F172A]">{reply.authorName}</p>
+                                        <p className="text-xs font-bold text-[#98A2B3]">{new Date(reply.createdAt).toLocaleString("vi-VN")}</p>
+                                      </div>
+                                    </div>
+                                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black uppercase text-[#667085]">{reply.authorRole}</span>
+                                  </div>
+                                  <p className="mt-3 whitespace-pre-line text-sm font-medium leading-6 text-[#344054]">{reply.content}</p>
+                                </div>
+                              ))}
+
+                              {isLoggedIn && (
+                                <div className="flex gap-3 pt-2">
+                                  <input
+                                    value={replyDrafts[item.id] || ""}
+                                    onChange={(e) => setReplyDrafts((drafts) => ({ ...drafts, [item.id]: e.target.value }))}
+                                    className="h-11 min-w-0 flex-1 rounded-xl border border-[#E8EDF5] bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#FF5A1F]"
+                                    placeholder="Viết phản hồi..."
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => submitReply(item.id)}
+                                    disabled={replyingId === item.id}
+                                    className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#0F172A] px-4 text-sm font-black text-white disabled:opacity-60"
+                                  >
+                                    {replyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                    Gửi
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-[22px] border border-dashed border-[#D8DFEA] bg-[#FBFCFE] p-10 text-center">
+                      <MessageSquare className="mx-auto h-10 w-10 text-slate-300" />
+                      <p className="mt-3 text-sm font-semibold text-[#667085]">Khóa học này chưa có feedback nào.</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -539,10 +790,9 @@ export default function CourseDetail() {
               )}
               <h3 className="mt-5 text-xl font-black text-[#0F172A]">{teacherName}</h3>
               <p className="mt-1 text-sm font-semibold text-[#667085]">Giang vien phu trach khoa hoc</p>
-              <div className="mt-6 grid grid-cols-3 gap-3">
+              <div className="mt-6 grid grid-cols-2 gap-3">
                 <div><p className="text-lg font-black text-[#0F172A]">{formatNumber(course.lessonCount)}</p><p className="text-xs font-semibold text-[#667085]">Bai hoc</p></div>
                 <div><p className="text-lg font-black text-[#0F172A]">{formatNumber(course.studentCount)}</p><p className="text-xs font-semibold text-[#667085]">Hoc vien</p></div>
-                <div><p className="text-lg font-black text-[#0F172A]">{progress}%</p><p className="text-xs font-semibold text-[#667085]">Tien do</p></div>
               </div>
             </section>
 
@@ -553,7 +803,7 @@ export default function CourseDetail() {
                   `${formatNumber(course.lessonCount)} bai hoc trong chuong trinh`,
                   `${resourceCount} hoc lieu di kem tu video, PDF va Word`,
                   `Mo ta chi tiet va muc tieu hoc tap ro rang`,
-                  `Theo doi tien do hoc tap theo du lieu khoa hoc`,
+                  `Theo doi tien do hoc tap theo tung bai giang`,
                 ].map((item) => (
                   <div key={item} className="flex items-start gap-3 text-sm font-semibold text-[#3C4A5F]">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-500" />

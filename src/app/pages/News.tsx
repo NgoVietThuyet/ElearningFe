@@ -12,8 +12,6 @@ interface NewsItem {
   avatarUrl?: string | null;
 }
 
-const tabs = ["Tất cả", "Kiến thức", "Nghiên cứu", "Học tập", "Sự kiện"];
-
 function stripHtml(html: string) {
   const tmp = document.createElement("div");
   tmp.innerHTML = html;
@@ -44,7 +42,6 @@ export default function News() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("Tất cả");
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -68,10 +65,9 @@ export default function News() {
         item.title.toLowerCase().includes(normalized) ||
         item.authorName.toLowerCase().includes(normalized) ||
         stripHtml(item.content).toLowerCase().includes(normalized);
-      const matchesTab = activeTab === "Tất cả" || getCategory(item) === activeTab;
-      return matchesSearch && matchesTab;
+      return matchesSearch;
     });
-  }, [activeTab, news, searchTerm]);
+  }, [news, searchTerm]);
 
   const featured = filteredNews[0];
   const sideNews = filteredNews.slice(1, 4);
@@ -98,19 +94,6 @@ export default function News() {
           </div>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-3">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`h-10 rounded-xl px-5 text-xs font-black transition ${
-                activeTab === tab ? "bg-[#ff4f12] text-white shadow-lg shadow-orange-500/20" : "bg-transparent text-slate-500 hover:bg-white"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-24">

@@ -90,6 +90,16 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  html,
+  body,
+  #root,
+  input,
+  textarea,
+  select,
+  button {
+    font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+
   h1 {
     font-size: 32px;
     font-weight: 800;
@@ -119,5 +129,36 @@
   button {
     font-family: inherit;
     transition: all 0.2s ease;
+  }
+}
+
+@layer utilities {
+  .app-main > div > :first-child {
+    padding-top: 10px !important;
+  }
+
+  .app-main section:first-child,
+  .app-main header:first-child,
+  .app-main main:first-child {
+    margin-top: 0 !important;
+  }
+
+  .app-shell [class*="rounded-[14px]"],
+  .app-shell [class*="rounded-[16px]"],
+  .app-shell [class*="rounded-[18px]"],
+  .app-shell [class*="rounded-[20px]"],
+  .app-shell [class*="rounded-[22px]"],
+  .app-shell [class*="rounded-[24px]"],
+  .app-shell [class*="rounded-[28px]"],
+  .app-shell [class*="rounded-[2rem]"],
+  .app-shell [class*="rounded-[2.5rem]"],
+  .app-shell .rounded-xl,
+  .app-shell .rounded-2xl,
+  .app-shell .rounded-3xl {
+    border-radius: 8px !important;
+  }
+
+  .app-shell [class*="rounded-full"] {
+    border-radius: 9999px !important;
   }
 }

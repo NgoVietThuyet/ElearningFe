@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import {
   ArrowRight,
@@ -230,7 +230,7 @@ export default function Home() {
     },
     {
       title: "Cải tiến",
-      text: "Luyện tập, kiểm tra và nâng cao kỹ năng để đạt kết quả tốt nhất.",
+      text: "Luyện tập, kiểm tra và nâng cao kỹ năng trong học tập",
       action: "Luyện tập & Đánh giá",
       image: "/assets/about-biology-lab.png",
       tone: "text-emerald-600 bg-emerald-50",
@@ -366,8 +366,9 @@ export default function Home() {
           <div className="relative mt-10">
             <div className="absolute left-[10%] right-[10%] top-5 hidden border-t border-dashed border-slate-200 lg:block" />
             <div className="relative grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {learningPath.map((item, index) => (
-                <div key={item.title} className="relative">
+              {learningPath.map((item, index) => {
+                const content = (
+                  <>
                   <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full border-[6px] border-white bg-[#ff6b00] text-base font-black text-white shadow-lg shadow-orange-200 ring-1 ring-orange-100">
                     {index + 1}
                   </div>
@@ -383,8 +384,21 @@ export default function Home() {
                       {item.action}
                     </div>
                   </article>
-                </div>
-              ))}
+                  </>
+                );
+
+                const path = index === 0 ? "/news" : index === 1 ? "/learning/creative" : index === 2 ? "/feedback" : null;
+
+                return path ? (
+                  <Link key={item.title} to={path} className="relative block">
+                    {content}
+                  </Link>
+                ) : (
+                  <div key={item.title} className="relative">
+                    {content}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -590,3 +604,4 @@ function FooterLinks({ title, items }: { title: string; items: Array<[string, st
     </div>
   );
 }
+

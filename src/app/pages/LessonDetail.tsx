@@ -1,7 +1,35 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Download, FileText, FileType2, Loader2, Video } from "lucide-react";
+import { ExternalLink, FileText, FileType2, Loader2, Video } from "lucide-react";
+import { API_BASE_URL } from "../api/apiClient";
 import { studentApi } from "../api/studentApi";
+
+function toEmbedUrl(url: string) {
+  const match = url.match(
+    /(?:youtube\.com\/(?:watch\?.*v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  );
+  if (match) return `https://www.youtube.com/embed/${match[1]}`;
+  return url;
+}
+
+function toAbsoluteUrl(url: string) {
+  if (!url || url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE_URL}${url}`;
+}
+
+function getProgressKey(lessonId: number | string) {
+  return `edusmart.lessonProgress.${lessonId}`;
+}
+
+function readCompletedResources(lessonId: number | string) {
+  try {
+    const raw = localStorage.getItem(getProgressKey(lessonId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? new Set<string>(parsed) : new Set<string>();
+  } catch {
+    return new Set<string>();
+  }
+}
 
 interface LessonDetailData {
   id: number;
@@ -10,10 +38,21 @@ interface LessonDetailData {
   title: string;
   description: string;
   videoUrl?: string | null;
+  quizUrl?: string | null;
+  arVrUrl?: string | null;
   pdfUrl?: string | null;
   documentUrl?: string | null;
   documentName?: string | null;
+  slideUrl?: string | null;
+  slideFileName?: string | null;
+  lessonPlanUrl?: string | null;
+  lessonPlanFileName?: string | null;
   tests?: Array<{
+    id: number;
+    title: string;
+    questions?: any[];
+  }>;
+  exercises?: Array<{
     id: number;
     title: string;
     questions?: any[];
@@ -22,9 +61,10 @@ interface LessonDetailData {
 
 interface Resource {
   id: string;
-  type: "video" | "pdf" | "doc";
+  type: "video" | "pdf" | "doc" | "slide" | "lessonplan" | "arvr";
   name: string;
   url: string;
+  fileName?: string | null;
 }
 
 export default function LessonDetail() {
@@ -32,6 +72,7 @@ export default function LessonDetail() {
   const navigate = useNavigate();
   const [lesson, setLesson] = useState<LessonDetailData | null>(null);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+  const [completedResources, setCompletedResources] = useState<Set<string>>(() => (id ? readCompletedResources(id) : new Set<string>()));
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -58,11 +99,20 @@ export default function LessonDetail() {
       lesson.videoUrl
         ? { id: "video", type: "video", name: `${lesson.title} - Video`, url: lesson.videoUrl }
         : null,
-      lesson.pdfUrl
-        ? { id: "pdf", type: "pdf", name: `${lesson.title} - Tai lieu PDF`, url: lesson.pdfUrl }
+      lesson.arVrUrl
+        ? { id: "arvr", type: "arvr", name: `${lesson.title} - AR/VR`, url: lesson.arVrUrl }
+        : null,
+      lesson.slideUrl
+        ? { id: "slide", type: "slide", name: lesson.slideFileName || `${lesson.title} - Slide`, url: `${lesson.slideUrl}?format=pdf`, fileName: lesson.slideFileName }
+        : null,
+      lesson.lessonPlanUrl
+        ? { id: "lessonplan", type: "lessonplan", name: lesson.lessonPlanFileName || `${lesson.title} - Giao an`, url: `${lesson.lessonPlanUrl}?format=pdf`, fileName: lesson.lessonPlanFileName }
         : null,
       lesson.documentUrl
-        ? { id: "doc", type: "doc", name: lesson.documentName || `${lesson.title} - Tai lieu Word`, url: lesson.documentUrl }
+        ? { id: "doc", type: "doc", name: lesson.documentName || `${lesson.title} - Bai tap`, url: `${lesson.documentUrl}?format=pdf`, fileName: lesson.documentName }
+        : null,
+      lesson.pdfUrl
+        ? { id: "pdf", type: "pdf", name: `${lesson.title} - Tai lieu PDF`, url: lesson.pdfUrl }
         : null,
     ].filter(Boolean) as Resource[];
   }, [lesson]);
@@ -72,6 +122,25 @@ export default function LessonDetail() {
       setSelectedResource(resources[0]);
     }
   }, [resources, selectedResource]);
+
+  useEffect(() => {
+    if (id) setCompletedResources(readCompletedResources(id));
+  }, [id]);
+
+  const lessonProgress = resources.length > 0 ? Math.round((completedResources.size / resources.length) * 100) : 0;
+
+  const selectResource = (resource: Resource) => {
+    setSelectedResource(resource);
+    if (!id) return;
+
+    setCompletedResources((current) => {
+      if (current.has(resource.id)) return current;
+      const next = new Set(current);
+      next.add(resource.id);
+      localStorage.setItem(getProgressKey(id), JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
 
   if (isLoading) {
     return (
@@ -97,58 +166,45 @@ export default function LessonDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <button onClick={() => navigate(-1)} className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="h-5 w-5" />
-            Quay lai
-          </button>
-          <p className="mb-2 text-xs font-black uppercase tracking-widest text-orange-600">{lesson.courseTitle}</p>
-          <h1 className="text-3xl font-black tracking-tight text-gray-900">{lesson.title}</h1>
-          <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-gray-600">{lesson.description}</p>
+      <div className="mx-auto max-w-7xl px-4 pt-2 pb-4 sm:px-6 lg:px-8">
+        <div className="mb-4">
+          <p className="text-xs font-black uppercase tracking-widest text-orange-600">{lesson.courseTitle}</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-900">{lesson.title}</h1>
+          <p className="mt-1 max-w-3xl text-sm font-medium leading-5 text-gray-600">{lesson.description}</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
+          <div className="min-w-0">
+            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
               {selectedResource ? (
-                <div>
-                  <div className="border-b border-gray-200 bg-orange-50 p-4">
-                    <h3 className="font-semibold text-gray-900">{selectedResource.name}</h3>
-                  </div>
-                  <div className="aspect-video bg-gray-100">
+                <div className="relative">
+                  {selectedResource.type === "arvr" && (
+                    <a
+                      href={toAbsoluteUrl(selectedResource.url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="absolute right-3 top-3 z-10 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-bold text-orange-600 shadow-sm ring-1 ring-gray-200 hover:bg-orange-50"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Mở AR/VR
+                    </a>
+                  )}
+                  <div className="h-[calc(100vh-130px)] bg-gray-100">
                     {selectedResource.type === "video" ? (
                       <iframe
-                        src={selectedResource.url}
+                        key={selectedResource.id}
+                        src={toEmbedUrl(selectedResource.url)}
                         className="h-full w-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <div className="text-center">
-                          {selectedResource.type === "pdf" ? (
-                            <FileText className="mx-auto mb-4 h-16 w-16 text-gray-400" />
-                          ) : (
-                            <FileType2 className="mx-auto mb-4 h-16 w-16 text-gray-400" />
-                          )}
-                          <p className="text-gray-600">{selectedResource.type === "pdf" ? "Tai lieu PDF" : "Tai lieu Word"}</p>
-                          <a
-                            href={selectedResource.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mx-auto mt-4 flex w-fit items-center gap-2 rounded-lg bg-orange-600 px-6 py-2 text-white hover:bg-orange-700"
-                          >
-                            <Download className="h-4 w-4" />
-                            Mo tai lieu
-                          </a>
-                        </div>
-                      </div>
+                      <iframe key={selectedResource.id} src={toAbsoluteUrl(selectedResource.url)} className="h-full w-full" title={selectedResource.name} />
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="flex aspect-video items-center justify-center bg-gradient-to-br from-orange-100 to-orange-50">
+                <div className="flex h-[calc(100vh-130px)] items-center justify-center bg-gradient-to-br from-orange-100 to-orange-50">
                   <div className="text-center">
                     <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-md">
                       <FileText className="h-10 w-10 text-orange-600" />
@@ -160,38 +216,61 @@ export default function LessonDetail() {
             </div>
           </div>
 
-          <div>
+          <div className="space-y-4">
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-200 p-6">
-                <h2 className="text-xl font-black text-gray-900">Tai lieu hoc tap</h2>
+              <div className="border-b border-gray-200 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-black text-gray-900">Tài liệu học tập</h2>
+                  <span className="text-xs font-black text-orange-600">{lessonProgress}%</span>
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-gray-100">
+                  <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${lessonProgress}%` }} />
+                </div>
               </div>
-              <div className="space-y-2 p-4">
+              <div className="space-y-1.5 p-3">
                 {resources.length > 0 ? (
                   resources.map((resource) => (
                     <button
                       key={resource.id}
-                      onClick={() => setSelectedResource(resource)}
-                      className={`flex w-full items-center gap-3 rounded-lg border p-4 transition-all ${
-                        selectedResource?.id === resource.id
-                          ? "border-orange-300 bg-orange-50"
-                          : "border-gray-200 hover:border-orange-200 hover:bg-gray-50"
-                      }`}
+                      onClick={() => selectResource(resource)}
+                      className={`flex w-full items-center gap-2.5 rounded-lg border p-2.5 transition-all ${selectedResource?.id === resource.id
+                        ? "border-orange-300 bg-orange-50"
+                        : "border-gray-200 hover:border-orange-200 hover:bg-gray-50"
+                        }`}
                     >
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                        resource.type === "video" ? "bg-red-100" : resource.type === "pdf" ? "bg-blue-100" : "bg-amber-100"
-                      }`}>
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${resource.type === "video" ? "bg-red-100" :
+                        resource.type === "pdf" ? "bg-blue-100" :
+                          resource.type === "slide" ? "bg-purple-100" :
+                            resource.type === "lessonplan" ? "bg-teal-100" :
+                              resource.type === "arvr" ? "bg-violet-100" :
+                              "bg-amber-100"
+                        }`}>
                         {resource.type === "video" ? (
-                          <Video className="h-5 w-5 text-red-600" />
+                          <Video className="h-4 w-4 text-red-600" />
                         ) : resource.type === "pdf" ? (
-                          <FileText className="h-5 w-5 text-blue-600" />
+                          <FileText className="h-4 w-4 text-blue-600" />
+                        ) : resource.type === "slide" ? (
+                          <FileType2 className="h-4 w-4 text-purple-600" />
+                        ) : resource.type === "lessonplan" ? (
+                          <FileText className="h-4 w-4 text-teal-600" />
+                        ) : resource.type === "arvr" ? (
+                          <ExternalLink className="h-4 w-4 text-violet-600" />
                         ) : (
-                          <FileType2 className="h-5 w-5 text-amber-600" />
+                          <FileType2 className="h-4 w-4 text-amber-600" />
                         )}
                       </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-bold text-gray-900">{resource.name}</p>
-                        <p className="text-xs text-gray-500">{resource.type === "video" ? "Video" : resource.type === "pdf" ? "PDF" : "Word"}</p>
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="truncate text-sm font-bold text-gray-900">{resource.name}</p>
+                        <p className="text-[10px] font-semibold text-gray-500">
+                          {resource.type === "video" ? "Video" :
+                            resource.type === "pdf" ? "PDF" :
+                              resource.type === "slide" ? "Slide" :
+                                resource.type === "lessonplan" ? "Giáo án" :
+                                  resource.type === "arvr" ? "AR/VR" :
+                                  "Bài tập"}
+                        </p>
                       </div>
+                      {completedResources.has(resource.id) && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />}
                     </button>
                   ))
                 ) : (
@@ -200,28 +279,52 @@ export default function LessonDetail() {
               </div>
             </div>
 
-            {lesson.tests && lesson.tests.length > 0 && (
-              <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="border-b border-gray-200 p-6 bg-slate-50/50">
-                  <h2 className="text-sm font-black text-gray-900 uppercase tracking-wider">Bài kiểm tra / Quiz</h2>
-                  <p className="text-xs text-gray-500 mt-1">Hoàn thành bài test để đánh giá kết quả tiếp thu của bạn</p>
+            {lesson.quizUrl && (
+              <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="border-b border-gray-200 bg-slate-50/50 px-4 py-3">
+                  <h2 className="text-xs font-black text-gray-900 uppercase tracking-wider">Bài kiểm tra / Quiz</h2>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Mở link bài kiểm tra trong trang mới</p>
                 </div>
-                <div className="space-y-3 p-4">
-                  {lesson.tests.map((test) => (
+                <div className="space-y-1.5 p-3">
+                  <button
+                    type="button"
+                    onClick={() => window.open(lesson.quizUrl || "", "_blank", "noopener,noreferrer")}
+                    className="flex w-full items-center gap-2.5 rounded-lg border border-gray-200 p-2.5 transition-all hover:border-orange-300 hover:bg-orange-50/15 group/test"
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover/test:bg-orange-50 group-hover/test:text-orange-600 transition-colors">
+                      <ExternalLink className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1 text-left">
+                      <p className="truncate text-sm font-bold text-gray-900 group-hover/test:text-orange-600 transition-colors">Bài kiểm tra</p>
+                      <p className="truncate text-[10px] text-gray-500">{lesson.quizUrl}</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {lesson.exercises && lesson.exercises.length > 0 && (
+              <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="border-b border-gray-200 bg-emerald-50/50 px-4 py-3">
+                  <h2 className="text-xs font-black text-gray-900 uppercase tracking-wider">Bài tập</h2>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Làm bài tập để củng cố kiến thức</p>
+                </div>
+                <div className="space-y-1.5 p-3">
+                  {lesson.exercises.map((exercise) => (
                     <button
-                      key={test.id}
-                      onClick={() => window.open(`/take-quiz/${lesson.id}/${test.id}`, "_blank")}
-                      className="flex w-full items-center gap-3 rounded-lg border border-gray-200 p-4 transition-all hover:border-orange-300 hover:bg-orange-50/15 group/test"
+                      key={exercise.id}
+                      onClick={() => window.open(`/take-quiz/${lesson.id}/${exercise.id}`, "_blank")}
+                      className="flex w-full items-center gap-2.5 rounded-lg border border-gray-200 p-2.5 transition-all hover:border-emerald-300 hover:bg-emerald-50/15 group/exercise"
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover/test:bg-orange-50 group-hover/test:text-orange-600 transition-colors">
-                        <FileText className="h-5 w-5" />
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover/exercise:bg-emerald-100 transition-colors">
+                        <FileType2 className="h-4 w-4" />
                       </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-bold text-gray-900 group-hover/test:text-orange-600 transition-colors">
-                          {test.title}
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="truncate text-sm font-bold text-gray-900 group-hover/exercise:text-emerald-600 transition-colors">
+                          {exercise.title}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          {test.questions?.length || 0} câu hỏi • Trắc nghiệm
+                        <p className="text-[10px] text-gray-500">
+                          {exercise.questions?.length || 0} câu hỏi • Bài tập
                         </p>
                       </div>
                     </button>
@@ -230,10 +333,9 @@ export default function LessonDetail() {
               </div>
             )}
 
-            <div className="mt-6 rounded-xl border border-orange-200 bg-orange-50 p-6">
-              <h3 className="mb-3 font-black text-gray-900">Hoan thanh bai hoc</h3>
-              <p className="mb-4 text-sm text-gray-600">Sau khi hoc xong, quay lai dashboard de tiep tuc bai hoc tiep theo.</p>
-              <button onClick={() => navigate("/student")} className="w-full rounded-lg bg-orange-600 px-4 py-2 text-white hover:bg-orange-700">
+            <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-3">
+              <h3 className="mb-1 text-xs font-black text-gray-900">Hoan thanh bai hoc</h3>
+              <button onClick={() => navigate("/student")} className="w-full rounded-lg bg-orange-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-orange-700">
                 Ve dashboard
               </button>
             </div>
@@ -243,3 +345,4 @@ export default function LessonDetail() {
     </div>
   );
 }
+

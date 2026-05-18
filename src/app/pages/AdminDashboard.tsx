@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router";
-import { 
-  Users, 
-  BookOpen, 
-  Edit, 
-  Trash2, 
-  LayoutDashboard, 
+import { Link, useNavigate, useSearchParams } from "react-router";
+import {
+  Users,
+  BookOpen,
+  Edit,
+  Trash2,
+  LayoutDashboard,
   Newspaper,
   ChevronRight,
   Search,
@@ -39,6 +39,8 @@ import { toast } from "sonner";
 import { adminApi } from "../api/adminApi";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import RichTextEditor from "../components/common/RichTextEditor";
+import CourseFeedbackPanel from "../components/common/CourseFeedbackPanel";
+import FeedbackPage from "./Feedback";
 
 type AdminSection = "home" | "dashboard" | "users" | "courses" | "news" | "courseDetail" | "feedback";
 
@@ -56,7 +58,7 @@ export default function AdminDashboard() {
       setActiveSection("dashboard");
     }
   }, [searchParams]);
-  
+
   const [courses, setCourses] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
   const [lessons, setLessons] = useState<any[]>([]);
@@ -64,7 +66,7 @@ export default function AdminDashboard() {
   const [learningItems, setLearningItems] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
-  const [courseDetailTab, setCourseDetailTab] = useState<"overview" | "lessons" | "materials" | "flashcards" | "quizzes" | "exams">("overview");
+  const [courseDetailTab, setCourseDetailTab] = useState<"overview" | "lessons" | "materials" | "flashcards" | "quizzes" | "exams" | "feedback">("overview");
   const [courseSearch, setCourseSearch] = useState("");
   const [courseStatusFilter, setCourseStatusFilter] = useState("all");
   const [courseTeacherFilter, setCourseTeacherFilter] = useState("all");
@@ -76,7 +78,7 @@ export default function AdminDashboard() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCourseDescriptionOpen, setIsCourseDescriptionOpen] = useState(false);
-  const [modalType, setModalType] = useState<"user"|"teacher"|"course"|"news"|"lesson"|null>(null);
+  const [modalType, setModalType] = useState<"user" | "teacher" | "course" | "news" | "lesson" | null>(null);
   const [editItem, setEditItem] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
   const [isUserCreateMenuOpen, setIsUserCreateMenuOpen] = useState(false);
@@ -250,7 +252,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleOpenModal = (type: "user"|"teacher"|"course"|"news"|"lesson", item: any = null) => {
+  const handleOpenModal = (type: "user" | "teacher" | "course" | "news" | "lesson", item: any = null) => {
     setModalType(type);
     setEditItem(item);
     setIsUserCreateMenuOpen(false);
@@ -269,6 +271,7 @@ export default function AdminDashboard() {
           role: roleToValue(item.role),
           dateOfBirth: dateInputValue(item.dateOfBirth),
           avatarPreview: getUserAvatarSrc(item),
+          authorName: item.authorName ?? "",
         });
       }
     } else {
@@ -289,6 +292,7 @@ export default function AdminDashboard() {
         avatarPreview: "",
       });
       else if (type === "lesson") setFormData({ courseId: selectedCourse?.id });
+      else if (type === "news") setFormData({ title: "", content: "", avatarUrl: "", authorName: "" });
       else if (type === "course") {
         setFormData({
           title: "",
@@ -318,6 +322,27 @@ export default function AdminDashboard() {
     setModalType(null);
     setEditItem(null);
     setFormData({});
+  };
+
+  const handleNewsImageUpload = async (file?: File | null) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file ảnh hợp lệ.");
+      return;
+    }
+
+    try {
+      const res = await adminApi.uploadNewsImage(file);
+      setFormData((current: any) => ({
+        ...current,
+        avatarFileName: file.name,
+        avatarUrl: res.data.url,
+      }));
+      toast.success("Tải ảnh đại diện thành công.");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể tải ảnh đại diện.");
+    }
   };
 
   const handleModalSubmit = async (e: React.FormEvent) => {
@@ -382,8 +407,18 @@ export default function AdminDashboard() {
         else await adminApi.createCourse(coursePayload);
         fetchCourses();
       } else if (modalType === "news") {
-        if (editItem) await adminApi.updateNews(editItem.id, formData);
-        else await adminApi.createNews(formData);
+        const newsPayload = {
+          title: formData.title?.trim(),
+          content: formData.content || "",
+          avatarUrl: formData.avatarUrl?.trim() || null,
+          authorName: formData.authorName?.trim() || null,
+        };
+        if (!newsPayload.title || !newsPayload.content || newsPayload.content === "<p></p>") {
+          toast.error("Vui lòng nhập tiêu đề và nội dung bài viết.");
+          return;
+        }
+        if (editItem) await adminApi.updateNews(editItem.id, newsPayload);
+        else await adminApi.createNews(newsPayload);
         fetchNews();
       } else if (modalType === "lesson") {
         if (editItem) await adminApi.updateLesson(editItem.id, formData);
@@ -492,15 +527,15 @@ export default function AdminDashboard() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ECEEF2" />
                 <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{ fill: "#667085", fontSize: 12, fontWeight: 600 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: "#667085", fontSize: 12, fontWeight: 600 }} />
-                <Tooltip 
-                  cursor={{ fill: "#FFF4EC" }} 
-                  contentStyle={{ 
-                    borderRadius: "16px", 
-                    border: "none", 
+                <Tooltip
+                  cursor={{ fill: "#FFF4EC" }}
+                  contentStyle={{
+                    borderRadius: "16px",
+                    border: "none",
                     boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
                     backgroundColor: "#ffffff",
                     padding: "12px"
-                  }} 
+                  }}
                 />
                 <Bar dataKey="count" fill="#FF6B00" radius={[8, 8, 0, 0]} barSize={40} />
               </BarChart>
@@ -534,9 +569,9 @@ export default function AdminDashboard() {
   const renderUsers = () => {
     const filteredUsers = users.filter((user) => {
       const keyword = userSearch.trim().toLowerCase();
-      const matchesSearch = !keyword || 
+      const matchesSearch = !keyword ||
         `${user.fullName} ${user.email} ${user.phoneNumber || ""}`.toLowerCase().includes(keyword);
-      
+
       const matchesRole = userRoleFilter === "all" || String(roleToValue(user.role)) === userRoleFilter;
       const userStatus = user.isActive === false ? "Không hoạt động" : "Hoạt động";
       const matchesStatus = userStatusFilter === "all" || userStatus === userStatusFilter;
@@ -552,35 +587,35 @@ export default function AdminDashboard() {
     };
 
     const userCards = [
-      { 
-        label: "Tổng người dùng", 
-        value: userStatsData.total, 
-        note: `+${userStatsData.totalTrend} người dùng mới`, 
-        icon: Users, 
+      {
+        label: "Tổng người dùng",
+        value: userStatsData.total,
+        note: `+${userStatsData.totalTrend} người dùng mới`,
+        icon: Users,
         className: "bg-orange-50 text-orange-600",
         isTrendUp: true
       },
-      { 
-        label: "Đang hoạt động", 
-        value: userStatsData.active, 
-        note: `+${userStatsData.activeTrend} hoạt động`, 
-        icon: Activity, 
+      {
+        label: "Đang hoạt động",
+        value: userStatsData.active,
+        note: `+${userStatsData.activeTrend} hoạt động`,
+        icon: Activity,
         className: "bg-green-50 text-green-600",
         isTrendUp: true
       },
-      { 
-        label: "Giảng viên", 
-        value: userStatsData.teacher, 
-        note: `+${userStatsData.teacherTrend} giảng viên`, 
-        icon: GraduationCap, 
+      {
+        label: "Giảng viên",
+        value: userStatsData.teacher,
+        note: `+${userStatsData.teacherTrend} giảng viên`,
+        icon: GraduationCap,
         className: "bg-blue-50 text-blue-600",
         isTrendUp: true
       },
-      { 
-        label: "Học sinh", 
-        value: userStatsData.student, 
-        note: `+${userStatsData.studentTrend} học sinh`, 
-        icon: UserPlus, 
+      {
+        label: "Học sinh",
+        value: userStatsData.student,
+        note: `+${userStatsData.studentTrend} học sinh`,
+        icon: UserPlus,
         className: "bg-violet-50 text-violet-600",
         isTrendUp: true
       },
@@ -642,11 +677,11 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap items-center gap-4 border-b border-[#E6EAF0] p-6 bg-white">
             <div className="relative min-w-[320px] flex-1">
               <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#98A2B3]" />
-              <input 
-                value={userSearch} 
-                onChange={(e) => setUserSearch(e.target.value)} 
-                placeholder="Tìm kiếm theo tên, email, số điện thoại..." 
-                className="h-12 w-full rounded-lg border border-[#E6EAF0] bg-[#FAFBFC] pl-12 pr-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00] focus:ring-4 focus:ring-orange-500/5" 
+              <input
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Tìm kiếm theo tên, email, số điện thoại..."
+                className="h-12 w-full rounded-lg border border-[#E6EAF0] bg-[#FAFBFC] pl-12 pr-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00] focus:ring-4 focus:ring-orange-500/5"
               />
             </div>
             <div className="flex items-center gap-3">
@@ -729,15 +764,15 @@ export default function AdminDashboard() {
 
           <div className="p-6 border-t border-[#E6EAF0] flex flex-col md:flex-row items-center justify-between gap-4 bg-white">
             <div className="flex items-center gap-4">
-               <span className="text-sm font-bold text-[#667085]">Hiển thị</span>
-               <select className="h-10 px-3 rounded-lg border border-[#E6EAF0] bg-white text-sm font-black text-[#0F172A] outline-none focus:border-[#FF6B00] cursor-pointer">
-                 <option>10</option>
-                 <option>20</option>
-                 <option>50</option>
-               </select>
-               <span className="text-sm font-bold text-[#667085]">trên mỗi trang</span>
+              <span className="text-sm font-bold text-[#667085]">Hiển thị</span>
+              <select className="h-10 px-3 rounded-lg border border-[#E6EAF0] bg-white text-sm font-black text-[#0F172A] outline-none focus:border-[#FF6B00] cursor-pointer">
+                <option>10</option>
+                <option>20</option>
+                <option>50</option>
+              </select>
+              <span className="text-sm font-bold text-[#667085]">trên mỗi trang</span>
             </div>
-            
+
             <div className="flex items-center gap-8">
               <p className="text-sm font-bold text-[#667085]">Tổng {formatNumber(users.length)} người dùng</p>
               <div className="flex items-center gap-2">
@@ -813,7 +848,7 @@ export default function AdminDashboard() {
     if (!total) return "Chưa đặt";
     const hours = Math.floor(total / 60);
     const mins = total % 60;
-    
+
     if (hours > 0 && mins > 0) {
       return `${hours} giờ ${mins} phút`;
     } else if (hours > 0) {
@@ -1022,7 +1057,7 @@ export default function AdminDashboard() {
     const published = courses.filter((course) => getCourseStatus(course) === "Published").length;
     const drafts = courses.filter((course) => getCourseStatus(course) === "Draft").length;
     const hidden = courses.filter((course) => getCourseStatus(course) === "Hidden").length;
-    
+
     const courseStatsData = stats.find(s => s.label === "Khóa học")?.courseStats || {
       total: courses.length, totalTrend: 0,
       published: published, publishedTrend: 0,
@@ -1031,35 +1066,35 @@ export default function AdminDashboard() {
     };
 
     const courseCards = [
-      { 
-        label: "Tổng khóa học", 
-        value: courseStatsData.total, 
-        note: courseStatsData.totalTrend >= 0 ? `+${courseStatsData.totalTrend} khóa học mới` : `${courseStatsData.totalTrend} khóa học`, 
-        icon: BookOpen, 
+      {
+        label: "Tổng khóa học",
+        value: courseStatsData.total,
+        note: courseStatsData.totalTrend >= 0 ? `+${courseStatsData.totalTrend} khóa học mới` : `${courseStatsData.totalTrend} khóa học`,
+        icon: BookOpen,
         className: "bg-orange-50 text-orange-600",
         isTrendUp: courseStatsData.totalTrend >= 0
       },
-      { 
-        label: "Đã xuất bản", 
-        value: courseStatsData.published, 
-        note: `+${courseStatsData.publishedTrend} khóa học`, 
-        icon: CheckCircle2, 
+      {
+        label: "Đã xuất bản",
+        value: courseStatsData.published,
+        note: `+${courseStatsData.publishedTrend} khóa học`,
+        icon: CheckCircle2,
         className: "bg-green-50 text-green-600",
         isTrendUp: true
       },
-      { 
-        label: "Bản nháp", 
-        value: courseStatsData.draft, 
-        note: courseStatsData.draftTrend >= 0 ? `+${courseStatsData.draftTrend} khóa học` : `${courseStatsData.draftTrend} khóa học`, 
-        icon: Clock3, 
+      {
+        label: "Bản nháp",
+        value: courseStatsData.draft,
+        note: courseStatsData.draftTrend >= 0 ? `+${courseStatsData.draftTrend} khóa học` : `${courseStatsData.draftTrend} khóa học`,
+        icon: Clock3,
         className: "bg-amber-50 text-amber-600",
         isTrendUp: courseStatsData.draftTrend >= 0
       },
-      { 
-        label: "Đã ẩn", 
-        value: courseStatsData.hidden, 
-        note: courseStatsData.hiddenTrend === 0 ? "→ Không đổi" : `${courseStatsData.hiddenTrend} khóa học`, 
-        icon: Archive, 
+      {
+        label: "Đã ẩn",
+        value: courseStatsData.hidden,
+        note: courseStatsData.hiddenTrend === 0 ? "→ Không đổi" : `${courseStatsData.hiddenTrend} khóa học`,
+        icon: Archive,
         className: "bg-violet-50 text-violet-600",
         isTrendUp: courseStatsData.hiddenTrend >= 0
       },
@@ -1071,9 +1106,7 @@ export default function AdminDashboard() {
           <div>
             <h2 className="text-3xl font-black tracking-tight text-[#0F172A]">Quản lý khóa học</h2>
             <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-[#667085]">
-              <span>Trang chủ</span>
-              <ChevronRight className="h-4 w-4" />
-              <span className="text-[#0F172A]">Khóa học</span>
+
             </div>
           </div>
           <button onClick={() => handleOpenModal("course")} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#FF4D12] px-6 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition-all hover:bg-[#E6420C] hover:-translate-y-0.5">
@@ -1109,11 +1142,11 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap items-center gap-4 border-b border-[#E6EAF0] p-6 bg-white">
             <div className="relative min-w-[320px] flex-1">
               <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#98A2B3]" />
-              <input 
-                value={courseSearch} 
-                onChange={(e) => setCourseSearch(e.target.value)} 
-                placeholder="Tìm kiếm khóa học theo tên, mô tả..." 
-                className="h-12 w-full rounded-lg border border-[#E6EAF0] bg-[#FAFBFC] pl-12 pr-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00] focus:ring-4 focus:ring-orange-500/5" 
+              <input
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                placeholder="Tìm kiếm khóa học theo tên, mô tả..."
+                className="h-12 w-full rounded-lg border border-[#E6EAF0] bg-[#FAFBFC] pl-12 pr-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00] focus:ring-4 focus:ring-orange-500/5"
               />
             </div>
             <div className="flex items-center gap-3">
@@ -1200,15 +1233,15 @@ export default function AdminDashboard() {
 
           <div className="p-6 border-t border-[#E6EAF0] flex flex-col md:flex-row items-center justify-between gap-4 bg-white">
             <div className="flex items-center gap-4">
-               <span className="text-sm font-bold text-[#667085]">Hiển thị</span>
-               <select className="h-10 px-3 rounded-xl border border-[#E6EAF0] bg-white text-sm font-black text-[#0F172A] outline-none focus:border-[#FF6B00] cursor-pointer">
-                 <option>10</option>
-                 <option>20</option>
-                 <option>50</option>
-               </select>
-               <span className="text-sm font-bold text-[#667085]">trên mỗi trang</span>
+              <span className="text-sm font-bold text-[#667085]">Hiển thị</span>
+              <select className="h-10 px-3 rounded-xl border border-[#E6EAF0] bg-white text-sm font-black text-[#0F172A] outline-none focus:border-[#FF6B00] cursor-pointer">
+                <option>10</option>
+                <option>20</option>
+                <option>50</option>
+              </select>
+              <span className="text-sm font-bold text-[#667085]">trên mỗi trang</span>
             </div>
-            
+
             <div className="flex items-center gap-8">
               <p className="text-sm font-bold text-[#667085]">Tổng {formatNumber(courses.length)} khóa học</p>
               <div className="flex items-center gap-2">
@@ -1402,6 +1435,7 @@ export default function AdminDashboard() {
       { id: "flashcards" as const, label: "Flashcard", count: flashcardItems.length },
       { id: "quizzes" as const, label: "Quiz", count: quizItems.length },
       { id: "exams" as const, label: "Bài thi", count: examItems.length },
+      { id: "feedback" as const, label: "Đánh giá khóa học", count: null },
     ];
 
     const renderLearningItemCards = (items: any[], kind: "flashcard" | "quiz" | "exam") => (
@@ -1646,6 +1680,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Link to={`/lesson/${lesson.id}`} className="rounded-lg px-3 py-2 text-xs font-black text-[#FF4D12] transition hover:bg-orange-50">Xem bài học</Link>
                       <button onClick={() => handleOpenModal("lesson", lesson)} className="rounded-lg p-2 text-[#667085] transition hover:bg-[#F8F9FB] hover:text-[#0F172A]"><Edit className="h-4 w-4" /></button>
                       <button onClick={() => handleDeleteLesson(lesson.id)} className="rounded-lg p-2 text-[#667085] transition hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                     </div>
@@ -1699,6 +1734,9 @@ export default function AdminDashboard() {
         {courseDetailTab === "flashcards" && renderLearningItemCards(flashcardItems, "flashcard")}
         {courseDetailTab === "quizzes" && renderLearningItemCards(quizItems, "quiz")}
         {courseDetailTab === "exams" && renderLearningItemCards(examItems, "exam")}
+        {courseDetailTab === "feedback" && (
+          <CourseFeedbackPanel courseId={course.id} teacherId={course.teacherId || course.createdBy || null} canWrite title="Đánh giá khóa học" />
+        )}
       </div>
     );
   };
@@ -1789,7 +1827,7 @@ export default function AdminDashboard() {
         {activeSection === "users" && renderUsers()}
         {activeSection === "courses" && renderCoursesV2()}
         {activeSection === "news" && renderNews()}
-        {activeSection === "feedback" && renderFeedback()}
+        {activeSection === "feedback" && <FeedbackPage />}
         {activeSection === "courseDetail" && renderCourseDetailV2(selectedCourse)}
       </div>
 
@@ -2006,7 +2044,7 @@ export default function AdminDashboard() {
                   {[
                     { number: "1.", title: "Thông tin cơ bản", desc: "Nhập thông tin tổng quan về khóa học", icon: BookOpen, active: true },
                     { number: "2.", title: "Mô tả khóa học", desc: "Giới thiệu chi tiết về nội dung khóa học", icon: FileText, onClick: () => setIsCourseDescriptionOpen(true) },
-                    { number: "3.", title: "Giảng viên", desc: "Chọn giảng viên phụ trách khóa học", icon: UserRound },
+
                   ].map((item) => (
                     <button type="button" key={item.title} onClick={item.onClick} className={`mb-5 flex w-full gap-4 rounded-lg p-5 text-left transition hover:bg-[#FFF7F3] ${item.active ? "bg-[#FFF2ED] text-[#FF4D12]" : "text-[#0F172A]"}`}>
                       <item.icon className="mt-0.5 h-6 w-6 shrink-0" />
@@ -2025,21 +2063,21 @@ export default function AdminDashboard() {
                       <div>
                         <label className="mb-3 block text-sm font-black text-[#0F172A]">Tên khóa học <span className="text-[#FF4D12]">*</span></label>
                         <div className="relative">
-                          <input required maxLength={100} value={formData.title || ""} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="Nhập tên khóa học" className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 pr-16 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                          <input required maxLength={100} value={formData.title || ""} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Nhập tên khóa học" className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 pr-16 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#667085]">{(formData.title || "").length}/100</span>
                         </div>
                       </div>
 
                       <div>
                         <label className="mb-3 block text-sm font-black text-[#0F172A]">Video giới thiệu (URL)</label>
-                        <input value={formData.introVideoUrl || ""} onChange={(e) => setFormData({...formData, introVideoUrl: e.target.value})} placeholder="https://www.youtube.com/watch?v=..." className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
-                        <p className="mt-3 text-sm font-medium text-[#667085]">Thêm link video giới thiệu khóa học (nếu có)</p>
+                        <input value={formData.introVideoUrl || ""} onChange={(e) => setFormData({ ...formData, introVideoUrl: e.target.value })} placeholder="https://www.youtube.com/watch?v=..." className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+
                       </div>
 
                       <div className="grid gap-5 md:grid-cols-1">
                         <div>
                           <label className="mb-3 block text-sm font-black text-[#0F172A]">Ngôn ngữ giảng dạy</label>
-                          <select value={formData.language || "Tiếng Việt"} onChange={(e) => setFormData({...formData, language: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]">
+                          <select value={formData.language || "Tiếng Việt"} onChange={(e) => setFormData({ ...formData, language: e.target.value })} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]">
                             <option value="Tiếng Việt">Tiếng Việt</option>
                             <option value="Tiếng Anh">Tiếng Anh</option>
                           </select>
@@ -2049,12 +2087,12 @@ export default function AdminDashboard() {
                       <div className="grid gap-5 md:grid-cols-2">
                         <div>
                           <label className="mb-3 block text-sm font-black text-[#0F172A]">Ngày bắt đầu</label>
-                          <input type="date" value={formData.startDate || ""} onChange={(e) => setFormData({...formData, startDate: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                          <input type="date" value={formData.startDate || ""} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
                         </div>
                         <div>
                           <label className="mb-3 block text-sm font-black text-[#0F172A]">Số lượng học viên dự kiến</label>
-                          <input type="number" min={0} value={formData.expectedStudentCount || ""} onChange={(e) => setFormData({...formData, expectedStudentCount: e.target.value})} placeholder="Nhập số lượng học viên dự kiến" className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
-                          <p className="mt-3 text-sm font-medium text-[#667085]">Dùng để thống kê và hiển thị trên trang khóa học</p>
+                          <input type="number" min={0} value={formData.expectedStudentCount || ""} onChange={(e) => setFormData({ ...formData, expectedStudentCount: e.target.value })} placeholder="Nhập số lượng học viên dự kiến" className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+
                         </div>
                       </div>
                     </div>
@@ -2062,7 +2100,7 @@ export default function AdminDashboard() {
                     <div className="space-y-7">
                       <div>
                         <label className="mb-3 block text-sm font-black text-[#0F172A]">Mã khóa học <span className="text-[#FF4D12]">*</span></label>
-                        <input required value={formData.code || ""} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase().replace(/\s+/g, "-")})} placeholder="VD: SINH-HOC-12" className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                        <input required value={formData.code || ""} onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s+/g, "-") })} placeholder="VD: SINH-HOC-12" className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
                         <p className="mt-3 text-sm font-medium text-[#667085]">Mã viết hoa, không dấu, không khoảng cách</p>
                       </div>
 
@@ -2073,7 +2111,7 @@ export default function AdminDashboard() {
                             const file = e.target.files?.[0];
                             if (!file) return;
                             const reader = new FileReader();
-                            reader.onloadend = () => setFormData({...formData, avatarUrl: reader.result as string});
+                            reader.onloadend = () => setFormData({ ...formData, avatarUrl: reader.result as string });
                             reader.readAsDataURL(file);
                           }} />
                           <BookMarked className="mb-3 h-9 w-9 text-[#667085]" />
@@ -2081,18 +2119,18 @@ export default function AdminDashboard() {
                           <span className="mt-2 text-sm font-medium text-[#667085]">hoặc nhấp để chọn tệp</span>
                           <span className="mt-4 text-xs font-medium text-[#667085]">Định dạng: JPG, PNG, WebP. Kích thước tối thiểu: 1200x630px</span>
                         </label>
-                        <input value={formData.avatarUrl || ""} onChange={(e) => setFormData({...formData, avatarUrl: e.target.value})} placeholder="Hoặc nhập URL hình ảnh" className="mt-3 h-11 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                        <input value={formData.avatarUrl || ""} onChange={(e) => setFormData({ ...formData, avatarUrl: e.target.value })} placeholder="Hoặc nhập URL hình ảnh" className="mt-3 h-11 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
                       </div>
 
                       <div className="grid gap-5 md:grid-cols-2">
                         <div>
                           <label className="mb-3 block text-sm font-black text-[#0F172A]">Ngày kết thúc</label>
-                          <input type="date" value={formData.endDate || ""} onChange={(e) => setFormData({...formData, endDate: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
+                          <input type="date" value={formData.endDate || ""} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]" />
                         </div>
                         <div>
                           <label className="mb-3 block text-sm font-black text-[#0F172A]">Trạng thái</label>
                           <label className="flex h-12 items-center gap-3">
-                            <input type="checkbox" checked={(formData.status || "Published") === "Published"} onChange={(e) => setFormData({...formData, status: e.target.checked ? "Published" : "Hidden"})} className="h-5 w-5 accent-green-500" />
+                            <input type="checkbox" checked={(formData.status || "Published") === "Published"} onChange={(e) => setFormData({ ...formData, status: e.target.checked ? "Published" : "Hidden" })} className="h-5 w-5 accent-green-500" />
                             <span className="text-sm font-black text-[#0F172A]">Xuất bản</span>
                           </label>
                           <p className="text-sm font-medium text-[#667085]">Khóa học sẽ hiển thị với học viên</p>
@@ -2101,8 +2139,8 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="xl:col-span-2">
-                      <h3 className="mb-4 text-lg font-black text-[#0F172A]">3. Giảng viên</h3>
-                      <select required value={formData.teacherId || ""} onChange={(e) => setFormData({...formData, teacherId: e.target.value})} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]">
+                      <h3 className="mb-4 text-lg font-black text-[#0F172A]">Giảng viên</h3>
+                      <select required value={formData.teacherId || ""} onChange={(e) => setFormData({ ...formData, teacherId: e.target.value })} className="h-12 w-full rounded-lg border border-[#D8DFEA] px-4 text-sm font-semibold outline-none transition focus:border-[#FF6B00]">
                         <option value="">Chọn giảng viên phụ trách khóa học</option>
                         {users.filter((user) => roleToValue(user.role) === 1).map((teacher) => (
                           <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>
@@ -2136,10 +2174,10 @@ export default function AdminDashboard() {
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-8">
-              <RichTextEditor value={formData.description || ""} onChange={(html) => setFormData({...formData, description: html})} />
+              <RichTextEditor value={formData.description || ""} onChange={(html) => setFormData({ ...formData, description: html })} />
             </div>
             <div className="flex justify-end gap-4 border-t border-[#E6EAF0] px-8 py-5">
-              <button type="button" onClick={() => setFormData({...formData, description: ""})} className="h-11 rounded-lg border border-[#D8DFEA] bg-white px-6 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">
+              <button type="button" onClick={() => setFormData({ ...formData, description: "" })} className="h-11 rounded-lg border border-[#D8DFEA] bg-white px-6 text-sm font-black text-[#0F172A] transition hover:bg-[#F8F9FB]">
                 Xóa nội dung
               </button>
               <button type="button" onClick={() => setIsCourseDescriptionOpen(false)} className="h-11 rounded-lg bg-[#FF4D12] px-8 text-sm font-black text-white transition hover:bg-[#E6420C]">
@@ -2325,7 +2363,7 @@ export default function AdminDashboard() {
       {isModalOpen && modalType !== "course" && modalType !== "teacher" && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative border border-border">
-            <button 
+            <button
               onClick={handleCloseModal}
               className="absolute top-5 right-5 p-1.5 rounded-lg hover:bg-[#F8F9FB] transition-all"
             >
@@ -2356,44 +2394,44 @@ export default function AdminDashboard() {
                         <Edit className="w-3.5 h-3.5" />
                       </div>
                     </div>
-                    <input 
-                      id="admin-avatar-input" 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
+                    <input
+                      id="admin-avatar-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
                           const reader = new FileReader();
                           reader.onloadend = () => {
-                            setFormData({...formData, avatarFile: file, avatarPreview: reader.result as string});
+                            setFormData({ ...formData, avatarFile: file, avatarPreview: reader.result as string });
                           };
                           reader.readAsDataURL(file);
                         }
-                      }} 
+                      }}
                     />
                     <span className="text-[10px] font-bold text-[#ADB5BD] mt-2 uppercase tracking-widest">Ảnh đại diện</span>
                   </div>
 
                   <div className="space-y-1.5 md:col-span-2">
                     <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Họ và tên</label>
-                    <input type="text" required value={formData.fullName || ""} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 focus:ring-4 focus:ring-[#FF6B00]/5 outline-none font-bold text-[#0F172A] transition-all placeholder:text-[#ADB5BD] placeholder:font-medium" placeholder="Nhập họ và tên..." />
+                    <input type="text" required value={formData.fullName || ""} onChange={e => setFormData({ ...formData, fullName: e.target.value })} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 focus:ring-4 focus:ring-[#FF6B00]/5 outline-none font-bold text-[#0F172A] transition-all placeholder:text-[#ADB5BD] placeholder:font-medium" placeholder="Nhập họ và tên..." />
                   </div>
                   {!editItem && (
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Email</label>
-                      <input type="email" required value={formData.email || ""} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 focus:ring-4 focus:ring-[#FF6B00]/5 outline-none font-bold text-[#0F172A] transition-all placeholder:text-[#ADB5BD] placeholder:font-medium" placeholder="example@email.com" />
+                      <input type="email" required value={formData.email || ""} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 focus:ring-4 focus:ring-[#FF6B00]/5 outline-none font-bold text-[#0F172A] transition-all placeholder:text-[#ADB5BD] placeholder:font-medium" placeholder="example@email.com" />
                     </div>
                   )}
                   {!editItem && (
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Mật khẩu</label>
-                      <input type="password" required value={formData.password || ""} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 focus:ring-4 focus:ring-[#FF6B00]/5 outline-none font-bold text-[#0F172A] transition-all placeholder:text-[#ADB5BD] placeholder:font-medium" placeholder="••••••••" />
+                      <input type="password" required value={formData.password || ""} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 focus:ring-4 focus:ring-[#FF6B00]/5 outline-none font-bold text-[#0F172A] transition-all placeholder:text-[#ADB5BD] placeholder:font-medium" placeholder="••••••••" />
                     </div>
                   )}
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Vai trò</label>
-                    <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg outline-none font-bold text-[#0F172A] focus:bg-white focus:border-[#FF6B00]/20 transition-all cursor-pointer">
+                    <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg outline-none font-bold text-[#0F172A] focus:bg-white focus:border-[#FF6B00]/20 transition-all cursor-pointer">
                       <option value={0}>Admin</option>
                       <option value={1}>Giáo viên</option>
                       <option value={2}>Học sinh</option>
@@ -2401,7 +2439,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Ngày sinh</label>
-                    <input type="date" value={formData.dateOfBirth || ""} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg outline-none font-bold text-[#0F172A] focus:bg-white focus:border-[#FF6B00]/20 transition-all" />
+                    <input type="date" value={formData.dateOfBirth || ""} onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg outline-none font-bold text-[#0F172A] focus:bg-white focus:border-[#FF6B00]/20 transition-all" />
                   </div>
                 </div>
               )}
@@ -2410,11 +2448,68 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Tên khóa học</label>
-                    <input type="text" required value={formData.title || ""} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 outline-none font-bold text-[#0F172A] transition-all" />
+                    <input type="text" required value={formData.title || ""} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 outline-none font-bold text-[#0F172A] transition-all" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">Mô tả chi tiết</label>
-                    <RichTextEditor value={formData.description || ""} onChange={html => setFormData({...formData, description: html})} />
+                    <RichTextEditor value={formData.description || ""} onChange={html => setFormData({ ...formData, description: html })} />
+                  </div>
+                </div>
+              )}
+
+              {modalType === "news" && (
+                <div className="space-y-5">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="block md:col-span-2">
+                      <span className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[#667085]">Tiêu đề bài viết *</span>
+                      <input
+                        type="text"
+                        required
+                        value={formData.title || ""}
+                        onChange={e => setFormData({ ...formData, title: e.target.value })}
+                        className="h-12 w-full rounded-xl border border-transparent bg-[#F8F9FB] px-4 text-sm font-bold text-[#0F172A] outline-none transition-all focus:border-[#FF6B00]/30 focus:bg-white focus:ring-4 focus:ring-[#FF6B00]/5"
+                        placeholder="VD: 5 xu hướng nghiên cứu Sinh học nổi bật"
+                      />
+                    </label>
+
+                    <label className="block md:col-span-2">
+                      <span className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[#667085]">Ảnh đại diện</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => handleNewsImageUpload(e.target.files?.[0])}
+                        className="block w-full rounded-xl border border-dashed border-[#D6DAE2] bg-[#F8F9FB] p-4 text-sm font-semibold text-[#667085] file:mr-4 file:rounded-full file:border-0 file:bg-[#FFF2EA] file:px-4 file:py-2 file:text-sm file:font-black file:text-[#FF6B00] hover:border-[#FF6B00]/50 hover:bg-white hover:file:bg-[#FFE3D1]"
+                      />
+                      {formData.avatarFileName && (
+                        <span className="mt-2 block text-xs font-bold text-emerald-600">{formData.avatarFileName}</span>
+                      )}
+                    </label>
+
+                    {formData.avatarUrl && (
+                      <div className="md:col-span-2 overflow-hidden rounded-2xl border border-[#ECEEF2] bg-[#F8F9FB]">
+                        <img src={formData.avatarUrl} alt="Preview" className="h-44 w-full object-cover" />
+                      </div>
+                    )}
+
+                    <label className="block md:col-span-2">
+                      <span className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[#667085]">Tác giả</span>
+                      <input
+                        type="text"
+                        value={formData.authorName || ""}
+                        onChange={e => setFormData({ ...formData, authorName: e.target.value })}
+                        className="h-12 w-full rounded-xl border border-transparent bg-[#F8F9FB] px-4 text-sm font-bold text-[#0F172A] outline-none transition-all focus:border-[#FF6B00]/30 focus:bg-white focus:ring-4 focus:ring-[#FF6B00]/5"
+                        placeholder="Nhập tên tác giả..."
+                      />
+                    </label>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[#667085]">Nội dung chi tiết *</label>
+                    <RichTextEditor
+                      value={formData.content || ""}
+                      onChange={html => setFormData({ ...formData, content: html })}
+                      placeholder="Nhập nội dung bài viết..."
+                    />
                   </div>
                 </div>
               )}

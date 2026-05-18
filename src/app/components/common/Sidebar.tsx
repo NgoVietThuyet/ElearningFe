@@ -68,14 +68,12 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       { id: "admin-users", label: "Người dùng", icon: Users, path: "/admin?section=users" },
       { id: "admin-courses", label: "Khóa học", icon: BookOpen, path: "/admin?section=courses" },
       { id: "admin-news", label: "Tin tức", icon: Newspaper, path: "/admin?section=news" },
-      { id: "admin-feedback", label: "Feedback", icon: MessageSquare, path: "/admin?section=feedback" },
     ],
     TEACHER: [
       { id: "teacher-courses", label: "Khóa học", icon: BookOpen, path: "/teacher?section=courses" },
       { id: "teacher-dash", label: "Tổng quan", icon: LayoutDashboard, path: "/teacher" },
       { id: "teacher-students", label: "Học sinh", icon: Users2, path: "/teacher?section=students" },
       { id: "teacher-lessons", label: "Bài giảng", icon: FileText, path: "/teacher?section=lessons" },
-      { id: "teacher-feedback", label: "Feedback", icon: MessageSquare, path: "/teacher?section=feedback" },
     ],
     STUDENT: [
       { id: "student-dash", label: "Dashboard", icon: LayoutDashboard, path: "/student" },
@@ -83,12 +81,12 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   };
 
   const currentRoleDashboardItems = dashboardItems[role as keyof typeof dashboardItems] || [];
+  const roleSectionTitle = role === "ADMIN" ? "Quản trị" : role === "TEACHER" ? "Giảng dạy" : "Học tập";
 
   const isActive = (path: string) => {
     const fullPath = location.pathname + location.search;
     if (path.includes("?")) return fullPath === path;
-    if (path === "/") return location.pathname === "/" && location.search === "";
-    return location.pathname === path;
+    return location.pathname === path && location.search === "";
   };
 
   if (!user) return null;
@@ -143,21 +141,21 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
         {/* Dashboard Section */}
         <div>
-           {!isCollapsed && <p className="px-4 mb-4 text-[12px] font-bold text-[#98A2B3] uppercase tracking-[0.08em]">Quản trị</p>}
+           {!isCollapsed && <p className="px-4 mb-3 text-[11px] font-bold text-[#98A2B3] uppercase tracking-widest">{roleSectionTitle}</p>}
            <div className="space-y-1">
              {currentRoleDashboardItems.map((item) => (
                <Link key={item.id} to={item.path}>
                  <div 
-                   className={`h-[52px] flex items-center gap-3 rounded-[16px] px-4 font-bold transition-all relative group cursor-pointer ${
+                   className={`h-[44px] flex items-center gap-3 rounded-lg px-3 font-bold transition-all relative group cursor-pointer ${
                      isActive(item.path) 
                      ? "bg-[#FFF4EC] text-[#FF6B00]" 
                      : "text-[#667085] hover:bg-[#F8F9FB] hover:text-[#0F172A]"
                    }`}
                  >
-                   <item.icon className={`h-5 w-5 ${isActive(item.path) ? "text-[#FF6B00]" : "text-[#98A2B3] group-hover:text-[#0F172A]"}`} />
-                   {!isCollapsed && <span className="text-sm">{item.label}</span>}
+                   <item.icon className={`h-4.5 w-4.5 ${isActive(item.path) ? "text-[#FF6B00]" : "text-[#98A2B3] group-hover:text-[#0F172A]"}`} />
+                   {!isCollapsed && <span className="text-xs">{item.label}</span>}
                    {isActive(item.path) && !isCollapsed && (
-                     <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[4px] h-[32px] bg-[#FF6B00] rounded-l-full" />
+                     <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-[24px] bg-[#FF6B00] rounded-l-full" />
                    )}
                  </div>
                </Link>

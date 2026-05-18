@@ -1,9 +1,10 @@
 import axios from "axios";
 import { installApiCache } from "./apiCache";
 
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5081";
+
 const apiClient = axios.create({
-  // baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5081",
-  baseURL: "https://elearning-be-8pwa.onrender.com",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

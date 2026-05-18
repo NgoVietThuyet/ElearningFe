@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+﻿import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router";
 import { 
   Users, 
   FileText, 
@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { teacherApi } from "../api/teacherApi";
+import CourseFeedbackPanel from "../components/common/CourseFeedbackPanel";
+import FeedbackPage from "./Feedback";
 
 type TeacherSection = "dashboard" | "courses" | "courseDetail" | "students" | "lessons" | "lessonDetail" | "feedback";
 
@@ -37,6 +39,7 @@ interface Stats {
 }
 
 export default function TeacherDashboard() {
+
   const [activeSection, setActiveSection] = useState<TeacherSection>("dashboard");
   const [selectedLesson, setSelectedLesson] = useState<any>(null);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
@@ -67,11 +70,12 @@ export default function TeacherDashboard() {
     description: "",
     videoUrl: "",
     arVrUrl: "",
+    quizUrl: "",
   });
   const [quizLesson, setQuizLesson] = useState<any>(null);
   const [quizForm, setQuizForm] = useState({
     title: "",
-    questions: [{ question: "", options: ["", "", "", ""], answer: 0 }],
+    url: "",
   });
   const [isSavingQuiz, setIsSavingQuiz] = useState(false);
   const [courseStudentEmail, setCourseStudentEmail] = useState("");
@@ -160,6 +164,7 @@ export default function TeacherDashboard() {
         description: "",
         videoUrl: "",
         arVrUrl: "",
+        quizUrl: "",
       });
       toast.success("Đã tạo bài giảng.");
     } catch (err: any) {
@@ -199,9 +204,8 @@ export default function TeacherDashboard() {
     try {
       const res = await teacherApi.getLearningItems(lesson.id);
       setLearningItems(res.data || []);
-    } catch (err) {
+    } catch {
       setLearningItems([]);
-      toast.error("Không thể tải bài kiểm tra của bài giảng.");
     }
   };
 
@@ -226,57 +230,31 @@ export default function TeacherDashboard() {
     </label>
   );
 
-  const updateQuizQuestion = (index: number, key: string, value: any) => {
-    setQuizForm((prev) => ({
-      ...prev,
-      questions: prev.questions.map((question, questionIndex) =>
-        questionIndex === index ? { ...question, [key]: value } : question
-      ),
-    }));
-  };
-
-  const updateQuizOption = (questionIndex: number, optionIndex: number, value: string) => {
-    setQuizForm((prev) => ({
-      ...prev,
-      questions: prev.questions.map((question, index) =>
-        index === questionIndex
-          ? { ...question, options: question.options.map((option, currentIndex) => currentIndex === optionIndex ? value : option) }
-          : question
-      ),
-    }));
-  };
-
-  const addQuizQuestion = () => {
-    setQuizForm((prev) => ({
-      ...prev,
-      questions: [...prev.questions, { question: "", options: ["", "", "", ""], answer: 0 }],
-    }));
-  };
-
   const handleCreateQuiz = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!quizLesson?.id) return;
     setIsSavingQuiz(true);
     try {
-      await teacherApi.createLearningItem(quizLesson.id, {
-        title: quizForm.title || "Bài kiểm tra",
-        content: JSON.stringify({ type: "quiz", questions: quizForm.questions }),
-      });
-      if (selectedLesson?.id === quizLesson.id) {
-        const res = await teacherApi.getLearningItems(quizLesson.id);
-        setLearningItems(res.data || []);
-      }
-      setLessons((prev) => prev.map((lesson) => lesson.id === quizLesson.id ? { ...lesson, quizCount: (lesson.quizCount || 0) + 1 } : lesson));
+      const quizUrl = quizForm.url.trim();
+      const payload = { ...quizLesson, quizUrl };
+      const res = await teacherApi.updateLesson(quizLesson.id, payload);
+      const updatedLesson = { ...quizLesson, ...(res.data || {}), quizUrl, quizCount: quizUrl ? 1 : 0 };
+      setLessons((prev) => prev.map((lesson) => lesson.id === quizLesson.id ? { ...lesson, ...updatedLesson } : lesson));
+      if (selectedLesson?.id === quizLesson.id) setSelectedLesson((prev: any) => prev ? { ...prev, ...updatedLesson } : prev);
       setQuizLesson(null);
-      setQuizForm({ title: "", questions: [{ question: "", options: ["", "", "", ""], answer: 0 }] });
-      toast.success("Đã tạo bài kiểm tra.");
+      setQuizForm({ title: "", url: "" });
+      toast.success("Đã cập nhật link bài kiểm tra.");
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Không thể tạo bài kiểm tra.");
+      toast.error(err.response?.data?.message || "Không thể cập nhật link bài kiểm tra.");
     } finally {
       setIsSavingQuiz(false);
     }
   };
 
+  const openQuizLinkModal = (lesson: any) => {
+    setQuizLesson(lesson);
+    setQuizForm({ title: "Bài kiểm tra", url: lesson.quizUrl || "" });
+  };
   const renderLessonDetail = (lesson: any) => (
     <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
       <div className="flex items-center gap-4 mb-6">
@@ -597,6 +575,8 @@ export default function TeacherDashboard() {
             </div>
           )}
         </div>
+
+        <CourseFeedbackPanel courseId={course.id} teacherId={course.teacherId || course.createdBy || null} canWrite title="Đánh giá khóa học" />
       </div>
     );
   };
@@ -621,7 +601,7 @@ export default function TeacherDashboard() {
                   <button className="p-2.5 hover:bg-orange-50 rounded-xl text-gray-400 hover:text-orange-600 transition-colors">
                     <Edit className="w-4.5 h-4.5" />
                   </button>
-                  <button onClick={() => setQuizLesson(lesson)} className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-colors" title="Thêm bài kiểm tra">
+                  <button onClick={() => openQuizLinkModal(lesson)} className="p-2.5 hover:bg-blue-50 rounded-xl text-gray-400 hover:text-blue-600 transition-colors" title="Thêm bài kiểm tra">
                     <ClipboardCheck className="w-4.5 h-4.5" />
                   </button>
                   <button className="p-2.5 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-600 transition-colors">
@@ -697,7 +677,7 @@ export default function TeacherDashboard() {
               {activeSection === "students" && renderStudents()}
               {activeSection === "lessons" && renderLessons()}
               {activeSection === "lessonDetail" && renderLessonDetailV2(selectedLesson)}
-              {activeSection === "feedback" && renderFeedback()}
+              {activeSection === "feedback" && <FeedbackPage />}
             </div>
           </div>
         </>
@@ -764,6 +744,10 @@ export default function TeacherDashboard() {
                       <span className="mb-2 block text-sm font-black text-[#344054]">AR/VR (link)</span>
                       <input value={lessonForm.arVrUrl || ""} onChange={(event) => updateLessonForm("arVrUrl", event.target.value)} className="h-12 w-full rounded-xl border border-[#D8DFEA] px-4 text-sm font-bold outline-none transition focus:border-[#FF6B00]" placeholder="https://..." />
                     </label>
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-black text-[#344054]">Bài kiểm tra (link)</span>
+                      <input type="url" value={lessonForm.quizUrl || ""} onChange={(event) => updateLessonForm("quizUrl", event.target.value)} className="h-12 w-full rounded-xl border border-[#D8DFEA] px-4 text-sm font-bold outline-none transition focus:border-[#FF6B00]" placeholder="https://forms.gle/... hoặc link quiz" />
+                    </label>
                   </div>
                 </section>
 
@@ -797,29 +781,13 @@ export default function TeacherDashboard() {
                 <span className="mb-2 block text-sm font-black text-[#344054]">Tên bài kiểm tra</span>
                 <input required value={quizForm.title} onChange={(event) => setQuizForm((prev) => ({ ...prev, title: event.target.value }))} className="h-12 w-full rounded-xl border border-[#D8DFEA] px-4 text-sm font-bold outline-none transition focus:border-[#FF6B00]" placeholder="VD: Kiểm tra ADN" />
               </label>
-              {quizForm.questions.map((question, index) => (
-                <div key={index} className="rounded-2xl border border-[#E6EAF0] bg-[#FBFCFE] p-5">
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-black text-[#344054]">Câu {index + 1}</span>
-                    <input required value={question.question} onChange={(event) => updateQuizQuestion(index, "question", event.target.value)} className="h-12 w-full rounded-xl border border-[#D8DFEA] px-4 text-sm font-bold outline-none transition focus:border-[#FF6B00]" placeholder="Nhập câu hỏi" />
-                  </label>
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    {question.options.map((option, optionIndex) => (
-                      <label key={optionIndex} className="block">
-                        <span className="mb-2 block text-xs font-black text-[#667085]">Đáp án {optionIndex + 1}</span>
-                        <input required value={option} onChange={(event) => updateQuizOption(index, optionIndex, event.target.value)} className="h-11 w-full rounded-xl border border-[#D8DFEA] px-4 text-sm font-bold outline-none transition focus:border-[#FF6B00]" />
-                      </label>
-                    ))}
-                  </div>
-                  <label className="mt-4 block">
-                    <span className="mb-2 block text-xs font-black text-[#667085]">Đáp án đúng</span>
-                    <select value={question.answer} onChange={(event) => updateQuizQuestion(index, "answer", Number(event.target.value))} className="h-11 w-full rounded-xl border border-[#D8DFEA] px-4 text-sm font-bold outline-none transition focus:border-[#FF6B00]">
-                      {question.options.map((_, optionIndex) => <option key={optionIndex} value={optionIndex}>Đáp án {optionIndex + 1}</option>)}
-                    </select>
-                  </label>
-                </div>
-              ))}
-              <button type="button" onClick={addQuizQuestion} className="h-11 rounded-xl border border-[#FFD8C7] bg-[#FFF4EC] px-5 text-sm font-black text-[#FF5A1F]">Thêm câu hỏi</button>
+              <label className="block">
+                <span className="mb-2 block text-sm font-black text-[#344054]">Link bài kiểm tra *</span>
+                <input required type="url" value={quizForm.url} onChange={(event) => setQuizForm((prev) => ({ ...prev, url: event.target.value }))} className="h-12 w-full rounded-xl border border-[#D8DFEA] px-4 text-sm font-bold outline-none transition focus:border-[#FF6B00]" placeholder="https://forms.gle/... hoặc link quiz của bạn" />
+              </label>
+              <div className="rounded-2xl border border-[#E6EAF0] bg-[#FBFCFE] p-5 text-sm font-semibold leading-6 text-[#667085]">
+                Bài kiểm tra được lưu dưới dạng một đường link. Khi học sinh hoặc giáo viên bấm vào link này, hệ thống sẽ mở trang mới của link đó.
+              </div>
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-[#EEF2F6] bg-[#FCFCFD] px-8 py-5">
               <button type="button" onClick={() => setQuizLesson(null)} className="h-12 rounded-xl border border-[#D8DFEA] bg-white px-8 text-sm font-black text-[#0F172A]">Hủy</button>
@@ -857,7 +825,7 @@ export default function TeacherDashboard() {
               <h2 className="mt-1 text-3xl font-black tracking-tight text-[#0F172A]">{lesson.title}</h2>
             </div>
           </div>
-          <button onClick={() => setQuizLesson(lesson)} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#FF5A1F] px-6 text-sm font-black text-white shadow-lg shadow-orange-100 transition hover:bg-[#E84A0C]">
+          <button onClick={() => openQuizLinkModal(lesson)} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#FF5A1F] px-6 text-sm font-black text-white shadow-lg shadow-orange-100 transition hover:bg-[#E84A0C]">
             <ClipboardCheck className="h-4 w-4" />
             Thêm bài kiểm tra
           </button>
@@ -890,7 +858,7 @@ export default function TeacherDashboard() {
                 <div className="flex justify-between text-sm"><span className="font-bold text-gray-500">Học sinh</span><span className="font-black text-[#0F172A]">{lesson.studentCount || 0}</span></div>
                 <div className="flex justify-between text-sm"><span className="font-bold text-gray-500">Hoàn thành</span><span className="font-black text-orange-600">{lesson.progress || 0}%</span></div>
                 <div className="h-2 rounded-full bg-gray-100"><div className="h-2 rounded-full bg-[#FF5A1F]" style={{ width: `${lesson.progress || 0}%` }} /></div>
-                <div className="flex justify-between text-sm"><span className="font-bold text-gray-500">Bài kiểm tra</span><span className="font-black text-[#0F172A]">{learningItems.length}</span></div>
+                <div className="flex justify-between text-sm"><span className="font-bold text-gray-500">Bài kiểm tra</span><span className="font-black text-[#0F172A]">{lesson.quizUrl ? 1 : 0}</span></div>
               </div>
             </div>
 
@@ -940,43 +908,34 @@ export default function TeacherDashboard() {
         <section className="rounded-[28px] border border-gray-100 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
             <h3 className="text-lg font-black text-[#0F172A]">Bài kiểm tra</h3>
-            <button onClick={() => setQuizLesson(lesson)} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#FFF4EC] px-4 text-xs font-black text-[#FF5A1F]">
+            <button onClick={() => openQuizLinkModal(lesson)} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#FFF4EC] px-4 text-xs font-black text-[#FF5A1F]">
               <Plus className="h-4 w-4" />
               Thêm quiz
             </button>
           </div>
           <div className="space-y-3">
-            {learningItems.length > 0 ? learningItems.map((item) => {
-              let questionCount = 0;
-              try {
-                const parsed = JSON.parse(item.content || "{}");
-                questionCount = parsed.questions?.length || 0;
-              } catch {
-                questionCount = 0;
-              }
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => window.open(`/take-quiz/${lesson.id}/${item.id}`, "_blank")}
-                  className="flex items-center justify-between rounded-2xl border border-gray-100 bg-[#FBFCFE] px-5 py-4 cursor-pointer hover:border-orange-200 hover:bg-orange-50/15 transition-all group/quiz"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover/quiz:bg-orange-50 group-hover/quiz:text-orange-600 transition-all"><ClipboardCheck className="h-5 w-5" /></div>
-                    <div>
-                      <p className="font-black text-[#0F172A] group-hover/quiz:text-orange-600 transition-all">{item.title}</p>
-                      <p className="text-xs font-bold text-gray-400">{questionCount} câu hỏi</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 opacity-0 group-hover/quiz:opacity-100 transition-all">Xem trước</span>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-black uppercase text-blue-600 shadow-sm border border-slate-100">Quiz</span>
+            {lesson.quizUrl ? (
+              <button
+                type="button"
+                onClick={() => window.open(lesson.quizUrl, "_blank", "noopener,noreferrer")}
+                className="flex w-full items-center justify-between rounded-2xl border border-gray-100 bg-[#FBFCFE] px-5 py-4 text-left transition-all hover:border-orange-200 hover:bg-orange-50/20 group/quiz"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover/quiz:bg-orange-50 group-hover/quiz:text-orange-600 transition-all"><ClipboardCheck className="h-5 w-5" /></div>
+                  <div>
+                    <p className="font-black text-[#0F172A] group-hover/quiz:text-orange-600 transition-all">Bài kiểm tra</p>
+                    <p className="max-w-[520px] truncate text-xs font-bold text-gray-400">{lesson.quizUrl}</p>
                   </div>
                 </div>
-              );
-            }) : (
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 opacity-0 group-hover/quiz:opacity-100 transition-all">Mở link</span>
+                  <ExternalLink className="h-4 w-4 text-blue-600" />
+                </div>
+              </button>
+            ) : (
               <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center">
                 <ClipboardCheck className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                <p className="text-sm font-bold text-gray-500">Chưa có bài kiểm tra cho bài giảng này.</p>
+                <p className="text-sm font-bold text-gray-500">Chưa có link bài kiểm tra cho bài giảng này.</p>
               </div>
             )}
           </div>
@@ -985,3 +944,4 @@ export default function TeacherDashboard() {
     );
   };
 }
+
