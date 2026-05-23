@@ -12,7 +12,8 @@ import {
   PanelLeftOpen,
   FileText,
   Users2,
-  Info
+  Info,
+  Sparkles
 } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 import { Button } from "../ui/button";
@@ -56,6 +57,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const commonItems = [
     { id: "home", label: "Trang chủ", icon: Home, path: "/" },
     { id: "courses", label: "Khóa học", icon: BookOpen, path: "/courses" },
+    { id: "chatbot", label: "GenZBio AI", icon: Sparkles, path: "/chatbot" },
     { id: "teachers", label: "Giảng viên", icon: GraduationCap, path: "/teachers" },
     { id: "news", label: "Tin tức", icon: Newspaper, path: "/news" },
     { id: "feedback", label: "Feedback", icon: MessageSquare, path: "/feedback" },
@@ -73,7 +75,6 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       { id: "teacher-courses", label: "Khóa học", icon: BookOpen, path: "/teacher?section=courses" },
       { id: "teacher-dash", label: "Tổng quan", icon: LayoutDashboard, path: "/teacher" },
       { id: "teacher-students", label: "Học sinh", icon: Users2, path: "/teacher?section=students" },
-      { id: "teacher-lessons", label: "Bài giảng", icon: FileText, path: "/teacher?section=lessons" },
     ],
     STUDENT: [
       { id: "student-dash", label: "Dashboard", icon: LayoutDashboard, path: "/student" },

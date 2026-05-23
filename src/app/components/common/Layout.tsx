@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import ChatWidget from "./ChatWidget";
 
 export default function Layout() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -37,11 +38,14 @@ export default function Layout() {
           <Navbar onToggleSidebar={toggleSidebar} />
         )}
         <main className={`app-main flex-1 w-full overflow-y-auto ${useAppPadding ? "px-4 pb-4 pt-[10px] lg:px-6 lg:pb-6 lg:pt-[10px]" : ""}`}>
-          <div className={`${useAppPadding ? "min-h-full" : ""}`}>
-            <Outlet />
+          <div className="flex min-h-full flex-col">
+            <div className={`flex-1 ${useAppPadding ? "" : ""}`}>
+              <Outlet />
+            </div>
           </div>
         </main>
       </div>
+      {isLoggedIn && <ChatWidget />}
     </div>
   );
 }

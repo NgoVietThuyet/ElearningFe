@@ -28,11 +28,35 @@ interface QuizData {
   id: number;
   title: string;
   questions: Question[];
+  durationMinutes?: number;
+  endTime?: string;
 }
 
 export default function TakeQuiz() {
   const { lessonId, testId } = useParams<{ lessonId: string; testId: string }>();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Khi mở quiz ở chế độ tab mới (window.open), ta lưu đường dẫn trước đó để nút Back/Browser back quay lại đúng page
+    // (không phụ thuộc history trong tab quiz)
+    try {
+      const prev = document.referrer;
+      if (prev) localStorage.setItem("genzbio.prev_route", prev);
+    } catch {
+      // ignore
+    }
+
+    const onPopState = () => {
+      const ref = localStorage.getItem("genzbio.prev_route");
+      if (ref) {
+        navigate(ref.replace(window.location.origin, ""));
+      }
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [navigate]);
+
 
   const [isLoading, setIsLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
@@ -42,6 +66,8 @@ export default function TakeQuiz() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
   const [results, setResults] = useState<{
     score: number;
     correctCount: number;
@@ -74,7 +100,7 @@ export default function TakeQuiz() {
         setIsLoading(true);
         if (role === "TEACHER" || role === "ADMIN") {
           // Teacher/Admin flow
-          const res = await teacherApi.getLearningItems(lessonId);
+          const res = await teacherApi.getLearningItems(Number(lessonId));
           const rawItems = res.data || [];
           const matched = rawItems.find((item: any) => String(item.id) === String(testId));
           if (matched) {
@@ -88,21 +114,21 @@ export default function TakeQuiz() {
               id: matched.id,
               title: matched.title || "Bài kiểm tra",
               questions: parsedContent.questions || [],
+              durationMinutes: parsedContent.durationMinutes,
+              endTime: parsedContent.endTime,
             });
           } else {
             toast.error("Không tìm thấy bài kiểm tra.");
           }
         } else {
-          // Student flow
+          // Student flow - search both tests and exercises (exams)
           const res = await studentApi.getLessonDetail(lessonId);
           const tests = res.data?.tests || [];
-          const matched = tests.find((t: any) => String(t.id) === String(testId));
+          const exercises = res.data?.exercises || [];
+          const allItems = [...tests, ...exercises];
+          const matched = allItems.find((t: any) => String(t.id) === String(testId));
           if (matched) {
-            // Note: studentApi returns deserialized Questions list:
-            // Select(t => new { t.Id, t.Title, Questions = ReadJsonProperty(t.Content, "questions") })
-            // In the DB seeder, questions use "correctIndex" or standard answer indexing. Let's adapt to both:
             const formattedQuestions = (matched.questions || []).map((q: any) => {
-              // Ensure correct answer index is resolved
               const answerIdx = q.answer !== undefined ? q.answer : (q.correctIndex !== undefined ? q.correctIndex : 0);
               return {
                 question: q.question || "",
@@ -114,6 +140,8 @@ export default function TakeQuiz() {
               id: matched.id,
               title: matched.title || "Bài kiểm tra",
               questions: formattedQuestions,
+              durationMinutes: matched.durationMinutes,
+              endTime: matched.endTime,
             });
           } else {
             toast.error("Không tìm thấy bài kiểm tra hoặc bài giảng chưa thuộc quyền học của bạn.");
@@ -130,14 +158,43 @@ export default function TakeQuiz() {
     fetchQuiz();
   }, [lessonId, testId, role]);
 
-  // Timer counter
+  // Deadline Guard Check
   useEffect(() => {
-    if (isLoading || isSubmitted || !quiz) return;
+    if (!quiz) return;
+    if (quiz.endTime) {
+      const deadline = new Date(quiz.endTime);
+      if (new Date() > deadline) {
+        setIsExpired(true);
+      }
+    }
+  }, [quiz]);
+
+  // Timer & Countdown counter
+  useEffect(() => {
+    if (isLoading || isSubmitted || !quiz || isExpired) return;
+
+    if (quiz.durationMinutes && quiz.durationMinutes > 0 && timeLeft === null) {
+      setTimeLeft(quiz.durationMinutes * 60);
+    }
+
     const timer = setInterval(() => {
       setTimeElapsed((prev) => prev + 1);
+
+      if (timeLeft !== null) {
+        setTimeLeft((prev) => {
+          if (prev === null) return null;
+          if (prev <= 1) {
+            clearInterval(timer);
+            handleAutoSubmit();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }
     }, 1000);
+
     return () => clearInterval(timer);
-  }, [isLoading, isSubmitted, quiz]);
+  }, [isLoading, isSubmitted, quiz, timeLeft, isExpired]);
 
   const handleSelectOption = (questionIdx: number, optionIdx: number) => {
     if (isSubmitted) return;
@@ -147,10 +204,55 @@ export default function TakeQuiz() {
     }));
   };
 
+  const handleAutoSubmit = async () => {
+    if (!quiz || isSubmitted || isSubmitting) return;
+    setIsSubmitting(true);
+    toast.warning("Hết giờ làm bài! Hệ thống đang tự động nộp bài...", { duration: 4000 });
+
+    try {
+      const answersArray = quiz.questions.map((_, idx) =>
+        selectedAnswers[idx] !== undefined ? selectedAnswers[idx] : -1
+      );
+
+      if (role === "TEACHER" || role === "ADMIN") {
+        let correctCount = 0;
+        quiz.questions.forEach((q, idx) => {
+          if (selectedAnswers[idx] === q.answer) {
+            correctCount++;
+          }
+        });
+        const score = quiz.questions.length === 0 ? 0 : Number(((correctCount / quiz.questions.length) * 10).toFixed(1));
+        setResults({
+          score,
+          correctCount,
+          totalQuestions: quiz.questions.length,
+          status: score >= 5 ? "PASSED" : "FAILED",
+        });
+        setIsSubmitted(true);
+        toast.success("Tự động nộp bài thi thành công!");
+      } else {
+        const res = await studentApi.submitTest(testId!, answersArray);
+        const data = res.data;
+        setResults({
+          score: data.score,
+          correctCount: data.correctCount,
+          totalQuestions: data.totalQuestions,
+          status: data.status,
+        });
+        setIsSubmitted(true);
+        toast.success("Tự động nộp bài thi thành công!");
+      }
+    } catch (err) {
+      console.error("Auto submit failed", err);
+      toast.error("Lỗi khi tự động nộp bài. Vui lòng kiểm tra lại kết nối.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!quiz) return;
 
-    // Check if all questions are answered
     const unansweredCount = quiz.questions.length - Object.keys(selectedAnswers).length;
     if (unansweredCount > 0) {
       const confirmSubmit = window.confirm(
@@ -169,7 +271,6 @@ export default function TakeQuiz() {
       );
 
       if (role === "TEACHER" || role === "ADMIN") {
-        // Teacher Preview submit simulation
         let correctCount = 0;
         quiz.questions.forEach((q, idx) => {
           if (selectedAnswers[idx] === q.answer) {
@@ -186,14 +287,13 @@ export default function TakeQuiz() {
         setIsSubmitted(true);
         toast.success("Nộp bài xem thử thành công!");
       } else {
-        // Student live submit
         const res = await studentApi.submitTest(testId!, answersArray);
         const data = res.data;
         setResults({
           score: data.score,
           correctCount: data.correctCount,
           totalQuestions: data.totalQuestions,
-          status: data.status, // "PASSED" or "FAILED"
+          status: data.status,
         });
         setIsSubmitted(true);
         toast.success("Nộp bài thi thành công!");
@@ -224,6 +324,27 @@ export default function TakeQuiz() {
     );
   }
 
+  if (isExpired) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6 text-center">
+        <AlertCircle className="h-16 w-16 text-rose-500 mb-4 animate-bounce" />
+        <h1 className="text-2xl font-black text-slate-800">Bài thi đã hết hạn!</h1>
+        <p className="text-sm font-semibold text-slate-500 mt-2">
+          Thời hạn nộp bài kiểm tra này đã kết thúc vào lúc:{" "}
+          <span className="font-bold text-rose-600">
+            {quiz?.endTime ? new Date(quiz.endTime).toLocaleString("vi-VN") : ""}
+          </span>
+        </p>
+        <button
+          onClick={() => window.close()}
+          className="mt-6 rounded-2xl bg-[#FF5A1F] px-6 py-3 font-bold text-white shadow-lg shadow-orange-100 hover:bg-orange-700 transition"
+        >
+          Đóng cửa sổ
+        </button>
+      </div>
+    );
+  }
+
   if (!quiz) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6 text-center">
@@ -232,7 +353,23 @@ export default function TakeQuiz() {
         <p className="text-sm font-semibold text-slate-500 mt-2">Bài thi này có thể đã bị xóa hoặc không thuộc bài giảng hợp lệ.</p>
         <button
           onClick={() => window.close()}
-          className="mt-6 rounded-2xl bg-orange-600 px-6 py-3 font-bold text-white shadow-lg shadow-orange-100 hover:bg-orange-700 transition"
+          className="mt-6 rounded-2xl bg-[#FF5A1F] px-6 py-3 font-bold text-white shadow-lg shadow-orange-100 hover:bg-orange-700 transition"
+        >
+          Đóng cửa sổ
+        </button>
+      </div>
+    );
+  }
+
+  if (quiz.questions.length === 0) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6 text-center">
+        <AlertCircle className="h-16 w-16 text-amber-500 mb-4 animate-pulse" />
+        <h1 className="text-2xl font-black text-slate-800">Bài kiểm tra chưa có câu hỏi</h1>
+        <p className="text-sm font-semibold text-slate-500 mt-2">Giáo viên chưa cấu hình câu hỏi cho bài kiểm tra này.</p>
+        <button
+          onClick={() => window.close()}
+          className="mt-6 rounded-2xl bg-slate-600 px-6 py-3 font-bold text-white shadow-lg transition hover:bg-slate-700"
         >
           Đóng cửa sổ
         </button>
@@ -267,13 +404,17 @@ export default function TakeQuiz() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-orange-500">Bài kiểm tra trắc nghiệm</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#FF5A1F]">Bài kiểm tra trắc nghiệm</p>
               <h1 className="text-lg font-black text-slate-900 tracking-tight line-clamp-1">{quiz.title}</h1>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 rounded-2xl bg-slate-100 px-4 py-2 text-slate-700 shadow-inner">
+            <div className={`flex items-center gap-2 rounded-2xl px-4 py-2 shadow-inner transition-all duration-300 ${
+              !isSubmitted && timeLeft !== null && timeLeft <= 60
+                ? "bg-rose-50 border border-rose-200 text-rose-600 animate-pulse"
+                : "bg-slate-100 text-slate-700"
+            }`}>
               {isSubmitted ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -281,8 +422,19 @@ export default function TakeQuiz() {
                 </>
               ) : (
                 <>
-                  <Timer className="h-4 w-4 text-orange-500 animate-pulse" />
-                  <span className="text-xs font-black text-slate-900 tabular-nums">{formatTime(timeElapsed)}</span>
+                  {timeLeft !== null ? (
+                    <>
+                      <Timer className={`h-4 w-4 ${timeLeft <= 60 ? "text-rose-500 animate-bounce" : "text-orange-500 animate-pulse"}`} />
+                      <span className={`text-xs font-black tabular-nums ${timeLeft <= 60 ? "text-rose-600" : "text-slate-900"}`}>
+                        Còn lại: {formatTime(timeLeft)}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-4 w-4 text-orange-500 animate-pulse" />
+                      <span className="text-xs font-black text-slate-900 tabular-nums">{formatTime(timeElapsed)}</span>
+                    </>
+                  )}
                 </>
               )}
             </div>

@@ -5,11 +5,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Lock,
   Search,
   SlidersHorizontal,
   Star,
 } from "lucide-react";
 import { publicApi } from "../api/publicApi";
+import { studentApi } from "../api/studentApi";
+import { jwtDecode } from "jwt-decode";
+import { toast } from "sonner";
 
 interface Course {
   id: number;
@@ -76,6 +80,8 @@ export default function Courses() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [sortBy, setSortBy] = useState("newest");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -90,6 +96,28 @@ export default function Courses() {
     };
 
     fetchCourses();
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const decoded = jwtDecode<any>(token);
+      const role = decoded.role || decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+      setUserRole(role);
+      if (role === "STUDENT") {
+        studentApi.getCourses()
+          .then((res) => {
+            const ids = new Set<number>((res.data || []).map((c: any) => c.id));
+            setEnrolledCourseIds(ids);
+          })
+          .catch((err) => {
+            console.error("Failed to load student courses", err);
+          });
+      }
+    } catch (err) {
+      console.error("Failed to decode token", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -167,43 +195,68 @@ export default function Courses() {
           ) : filteredCourses.length > 0 ? (
             <>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {filteredCourses.map((course, index) => (
-                  <Link
-                    key={course.id}
-                    to={`/course/${course.id}`}
-                    className="group overflow-hidden rounded-[8px] border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                  >
-                    <div className="relative h-40 overflow-hidden">
-                      <CourseThumb course={course} index={index} />
-                      <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-[11px] font-black uppercase text-[#ff4f12] shadow-sm">
-                        {index === 0 ? "Mới" : index === 1 ? "Phổ biến" : index === 2 ? "Hot" : "Mới"}
-                      </span>
-                    </div>
-                    <div className="p-4">
-                      <h2 className="line-clamp-1 text-base font-black text-[#0f172a] transition group-hover:text-[#ff4f12]">
-                        {course.title}
-                      </h2>
-                      <p className="mt-2 line-clamp-1 text-sm font-semibold text-slate-500">
-                        {stripHtml(course.description) || "Nền tảng kiến thức Sinh học"}
-                      </p>
-                      <div className="mt-4 flex items-center justify-between text-xs font-bold text-slate-500">
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[10px] font-black text-orange-600">
-                            {getInitials(course.teacherName || course.creatorName)}
+                {filteredCourses.map((course, index) => {
+                  const isLocked = userRole === "STUDENT" && !enrolledCourseIds.has(course.id);
+
+                  return (
+                    <Link
+                      key={course.id}
+                      to={`/course/${course.id}`}
+                      onClick={(e) => {
+                        if (isLocked) {
+                          e.preventDefault();
+                          toast.error("Bạn không có trong khóa học này");
+                        }
+                      }}
+                      className="group/tooltip relative rounded-[8px] border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                    >
+                      <div className={`relative h-40 overflow-hidden rounded-t-[8px] ${isLocked ? "opacity-75 grayscale-[30%]" : ""}`}>
+                        <CourseThumb course={course} index={index} />
+                        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-[11px] font-black uppercase text-[#ff4f12] shadow-sm">
+                          {index === 0 ? "Mới" : index === 1 ? "Phổ biến" : index === 2 ? "Hot" : "Mới"}
+                        </span>
+                        {isLocked && (
+                          <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-950/80 text-white backdrop-blur-md shadow-lg border border-white/10 z-10 animate-scale-in">
+                            <Lock className="h-3.5 w-3.5" />
                           </span>
-                          <span className="truncate">{course.teacherName || course.creatorName || "GenZBio"}</span>
-                        </span>
-                        <span className="flex items-center gap-1 text-amber-500">
-                          <Star className="h-3.5 w-3.5 fill-current" /> 4.9
-                        </span>
+                        )}
                       </div>
-                      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-bold">
-                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-600">Bắt đầu</span>
-                        <span className="text-slate-500">{formatDuration(course.durationMinutes)}</span>
+                      <div className="p-4">
+                        <h2 className="line-clamp-1 text-base font-black text-[#0f172a] transition group-hover:text-[#ff4f12]">
+                          {course.title}
+                        </h2>
+                        <p className="mt-2 line-clamp-1 text-sm font-semibold text-slate-500">
+                          {stripHtml(course.description) || "Nền tảng kiến thức Sinh học"}
+                        </p>
+                        <div className="mt-4 flex items-center justify-between text-xs font-bold text-slate-500">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[10px] font-black text-orange-600">
+                              {getInitials(course.teacherName || course.creatorName)}
+                            </span>
+                            <span className="truncate">{course.teacherName || course.creatorName || "GenZBio"}</span>
+                          </span>
+                          <span className="flex items-center gap-1 text-amber-500">
+                            <Star className="h-3.5 w-3.5 fill-current" /> 4.9
+                          </span>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-bold">
+                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-600">Bắt đầu</span>
+                          <span className="text-slate-500">{formatDuration(course.durationMinutes)}</span>
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+
+                      {/* Premium Tooltip */}
+                      {isLocked && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover/tooltip:flex flex-col items-center z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 pointer-events-none">
+                          <div className="bg-slate-950/95 text-white text-[11px] font-black px-4 py-2.5 rounded-xl shadow-2xl backdrop-blur-md border border-white/10 whitespace-nowrap tracking-wide">
+                            🔒 Bạn không có trong khóa học này
+                          </div>
+                          <div className="w-3 h-3 -mt-1.5 rotate-45 bg-slate-950/95 border-r border-b border-white/10"></div>
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
 
               <div className="mt-10 flex items-center justify-center gap-2">

@@ -61,6 +61,7 @@ export const adminApi = {
   getGpaDistribution: () => apiClient.get("/api/admin/stats/gpa-distribution"),
   getCourseCompletion: () => apiClient.get("/api/admin/stats/course-completion"),
   getRecentActivity: () => apiClient.get("/api/admin/stats/recent-activity"),
+  getMemberGrowth: () => apiClient.get("/api/admin/stats/member-growth"),
 
   // Users
   getAllUsers: () => apiClient.get("/api/admin/users/get_all"),
@@ -121,6 +122,7 @@ export const adminApi = {
     learningOutcomes?: string;
   }) => apiClient.put(`/api/admin/courses/update/${id}`, normalizeCoursePayload(data)),
   deleteCourse: (id: number) => apiClient.delete(`/api/admin/courses/delete/${id}`),
+  updateCourseOrder: (courseIds: number[]) => apiClient.post("/api/admin/courses/order", courseIds),
 
   // Lessons
   getLessonsByCourse: (courseId: number) => apiClient.get(`/api/admin/lessons/get_by_course/${courseId}`),

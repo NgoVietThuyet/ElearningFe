@@ -16,6 +16,9 @@ import About from "./pages/About";
 import Layout from "./components/common/Layout";
 import TakeQuiz from "./pages/TakeQuiz";
 import CreativeLearning from "./pages/CreativeLearning";
+import SketchLab from "./pages/SketchLab";
+
+import ChatbotPage from "./pages/ChatbotPage";
 
 export const router = createBrowserRouter([
   {
@@ -37,6 +40,8 @@ export const router = createBrowserRouter([
       { path: "feedback", Component: Feedback },
       { path: "about", Component: About },
       { path: "learning/creative", Component: CreativeLearning },
+      { path: "learning/sketchlab", Component: SketchLab },
+      { path: "chatbot", Component: ChatbotPage },
     ],
   },
   {
