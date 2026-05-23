@@ -34,7 +34,6 @@ type TeacherSection =
   | "dashboard"
   | "courses"
   | "courseDetail"
-  | "students"
   | "lessons"
   | "lessonDetail"
   | "feedback";
@@ -64,7 +63,6 @@ export default function TeacherDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [lessons, setLessons] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
-  const [students, setStudents] = useState<any[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [learningItems, setLearningItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,17 +122,15 @@ export default function TeacherDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, lessonsRes, studentsRes, feedbacksRes, coursesRes] =
+        const [statsRes, lessonsRes, feedbacksRes, coursesRes] =
           await Promise.all([
             teacherApi.getStats(),
             teacherApi.getLessons(),
-            teacherApi.getStudents(),
             teacherApi.getFeedbacks(),
             teacherApi.getCourses(),
           ]);
         setStats(statsRes.data);
         setLessons(lessonsRes.data);
-        setStudents(studentsRes.data);
         setFeedbacks(feedbacksRes.data);
         setCourses(coursesRes.data);
       } catch (err) {
@@ -153,8 +149,6 @@ export default function TeacherDashboard() {
       await teacherApi.addStudent(newStudentEmail);
       toast.success("Đã thêm học sinh vào danh sách quản lý!");
       setNewStudentEmail("");
-      const res = await teacherApi.getStudents();
-      setStudents(res.data);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Lỗi khi thêm học sinh.");
     }
@@ -181,11 +175,9 @@ export default function TeacherDashboard() {
             : course,
         ),
       );
-      const [studentsRes, coursesRes] = await Promise.all([
-        teacherApi.getStudents(),
+      const [coursesRes] = await Promise.all([
         teacherApi.getCourses(),
       ]);
-      setStudents(studentsRes.data);
       setCourses(coursesRes.data);
       const refreshedCourse = (coursesRes.data || []).find(
         (course: any) => Number(course.id) === Number(selectedCourse.id),
@@ -907,92 +899,6 @@ export default function TeacherDashboard() {
     </div>
   );
 
-  const renderStudents = () => (
-    <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-      <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
-        <div className="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#F8F9FB]/50">
-          <h2 className="text-xl font-bold text-[#0F172A] tracking-tight">
-            Danh sách học sinh
-          </h2>
-          <div className="relative w-full md:w-72">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#98A2B3]" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm..."
-              className="pl-10 pr-4 py-2.5 bg-white border border-border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none w-full text-xs font-bold text-[#0F172A] transition-all"
-            />
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50/50 border-b border-gray-100">
-              <tr>
-                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                  Học sinh
-                </th>
-                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                  Email liên hệ
-                </th>
-                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                  Tiến độ học tập
-                </th>
-                <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                  Ngày gia nhập
-                </th>
-                <th className="px-8 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                  Hành động
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {students.map((student) => (
-                <tr
-                  key={student.id}
-                  className="hover:bg-orange-50/10 transition-colors group"
-                >
-                  <td className="px-8 py-6 whitespace-nowrap">
-                    <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 bg-gradient-to-br from-orange-100 to-amber-100 text-orange-700 rounded-2xl flex items-center justify-center font-black text-sm shadow-sm group-hover:scale-110 transition-transform">
-                        {student.fullName.charAt(0)}
-                      </div>
-                      <span className="text-sm font-black text-gray-900 group-hover:text-orange-600 transition-colors">
-                        {student.fullName}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6 whitespace-nowrap text-sm text-gray-500 font-bold italic">
-                    {student.email}
-                  </td>
-                  <td className="px-8 py-6 whitespace-nowrap">
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 bg-gray-100 rounded-full h-2 shadow-inner">
-                        <div
-                          className="bg-orange-500 h-2 rounded-full shadow-[0_0_8px_rgba(249,115,22,0.4)]"
-                          style={{ width: `${student.progress}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-[10px] font-black text-gray-600">
-                        {student.progress}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6 whitespace-nowrap text-[10px] text-gray-400 font-black uppercase tracking-widest">
-                    {new Date(student.createdAt).toLocaleDateString("vi-VN")}
-                  </td>
-                  <td className="px-8 py-6 whitespace-nowrap text-right">
-                    <button className="text-orange-600 hover:text-white hover:bg-orange-600 font-black text-[9px] uppercase tracking-widest border border-orange-600 px-4 py-2 rounded-xl transition-all">
-                      CHI TIẾT
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-
   const renderCourses = () => (
     <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
       <div className="flex flex-col gap-2">
@@ -1380,7 +1286,6 @@ export default function TeacherDashboard() {
               {activeSection === "courses" && renderCourses()}
               {activeSection === "courseDetail" &&
                 renderCourseDetail(selectedCourse)}
-              {activeSection === "students" && renderStudents()}
               {activeSection === "lessons" && renderLessons()}
               {activeSection === "lessonDetail" &&
                 renderLessonDetailV2(selectedLesson)}
