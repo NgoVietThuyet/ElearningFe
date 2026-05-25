@@ -202,12 +202,6 @@ export default function Courses() {
                     <Link
                       key={course.id}
                       to={`/course/${course.id}`}
-                      onClick={(e) => {
-                        if (isLocked) {
-                          e.preventDefault();
-                          toast.error("Bạn không có trong khóa học này");
-                        }
-                      }}
                       className="group/tooltip relative rounded-[8px] border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                     >
                       <div className={`relative h-40 overflow-hidden rounded-t-[8px] ${isLocked ? "opacity-75 grayscale-[30%]" : ""}`}>
@@ -249,7 +243,7 @@ export default function Courses() {
                       {isLocked && (
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover/tooltip:flex flex-col items-center z-50 animate-in fade-in slide-in-from-bottom-2 duration-200 pointer-events-none">
                           <div className="bg-slate-950/95 text-white text-[11px] font-black px-4 py-2.5 rounded-xl shadow-2xl backdrop-blur-md border border-white/10 whitespace-nowrap tracking-wide">
-                            🔒 Bạn không có trong khóa học này
+                            🔒 Chưa đăng ký - Bấm để xem chi tiết & đăng ký
                           </div>
                           <div className="w-3 h-3 -mt-1.5 rotate-45 bg-slate-950/95 border-r border-b border-white/10"></div>
                         </div>

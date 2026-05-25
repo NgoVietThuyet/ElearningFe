@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Filter, Loader2, MessageSquare, ShieldCheck, Star, ThumbsUp } from "lucide-react";
+import { Filter, Loader2, MessageSquare, Send, ShieldCheck, Star, ThumbsUp } from "lucide-react";
+import { toast } from "sonner";
 import { publicApi } from "../api/publicApi";
 
 interface FeedbackItem {
@@ -41,13 +42,21 @@ function inTimeRange(value: string, range: string) {
   return now - created <= days * 24 * 60 * 60 * 1000;
 }
 
+function countReplies(item: FeedbackItem): number {
+  return item.replies.reduce((sum, r) => sum + 1 + countReplies(r), 0);
+}
+
 export default function Feedback() {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [courseFilter, setCourseFilter] = useState("all");
   const [timeFilter, setTimeFilter] = useState("all");
   const [expandedReplies, setExpandedReplies] = useState<Record<number, boolean>>({});
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
+  const [replyingId, setReplyingId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const isLoggedIn = !!localStorage.getItem("token");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,6 +77,26 @@ export default function Feedback() {
     fetchData();
   }, []);
 
+  const submitReply = async (feedbackId: number) => {
+    const content = replyDrafts[feedbackId]?.trim();
+    if (!content) {
+      toast.error("Vui lòng nhập phản hồi.");
+      return;
+    }
+    try {
+      setReplyingId(feedbackId);
+      await publicApi.createFeedbackReply(feedbackId, { content });
+      setReplyDrafts((drafts) => ({ ...drafts, [feedbackId]: "" }));
+      const res = await publicApi.getFeedbackThread();
+      setFeedbacks(res.data || []);
+      toast.success("Đã gửi phản hồi.");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể gửi phản hồi.");
+    } finally {
+      setReplyingId(null);
+    }
+  };
+
   const filteredFeedbacks = useMemo(() => {
     return feedbacks.filter((item) => {
       const matchesCourse = courseFilter === "all" || Number(item.courseId) === Number(courseFilter);
@@ -81,7 +110,70 @@ export default function Feedback() {
     return filteredFeedbacks.reduce((sum, item) => sum + item.rating, 0) / filteredFeedbacks.length;
   }, [filteredFeedbacks]);
 
-  const replyCount = filteredFeedbacks.reduce((total, item) => total + item.replies.length, 0);
+  const totalReplyCount = useMemo(
+    () => filteredFeedbacks.reduce((total, item) => total + countReplies(item), 0),
+    [filteredFeedbacks]
+  );
+
+  const renderReply = (reply: FeedbackItem, depth: number = 1) => (
+    <div key={reply.id} className="rounded-2xl bg-[#F8FAFC] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center justify-center rounded-full bg-white text-xs font-black text-[#FF5A1F] ${depth <= 1 ? "h-9 w-9" : "h-7 w-7"}`}>
+            {getInitials(reply.authorName)}
+          </div>
+          <div>
+            <p className="text-sm font-black text-[#101828]">{reply.authorName}</p>
+            <p className="text-xs font-bold text-slate-400">
+              {roleLabel(reply.authorRole)} · {new Date(reply.createdAt).toLocaleString("vi-VN")}
+            </p>
+          </div>
+        </div>
+      </div>
+      <p className={`mt-3 whitespace-pre-line font-medium leading-6 text-[#344054] ${depth <= 1 ? "text-sm" : "text-xs"}`}>{reply.content}</p>
+
+      {isLoggedIn && (
+        <div className="mt-3 flex items-center gap-4 text-xs font-black">
+          <button
+            type="button"
+            onClick={() =>
+              setExpandedReplies((current) => ({ ...current, [reply.id]: !current[reply.id] }))
+            }
+            className="text-[#0F172A] transition hover:text-[#FF5A1F]"
+          >
+            <MessageSquare className="mr-1 inline h-3.5 w-3.5" />
+            {expandedReplies[reply.id] ? "Ẩn" : "Phản hồi"}
+          </button>
+        </div>
+      )}
+
+      {expandedReplies[reply.id] && isLoggedIn && (
+        <div className="mt-3 flex gap-2">
+          <input
+            value={replyDrafts[reply.id] || ""}
+            onChange={(e) => setReplyDrafts((d) => ({ ...d, [reply.id]: e.target.value }))}
+            className="h-9 min-w-0 flex-1 rounded-xl border border-[#E8EDF5] bg-white px-3 text-xs font-semibold outline-none transition focus:border-[#FF5A1F]"
+            placeholder="Viết phản hồi..."
+          />
+          <button
+            type="button"
+            onClick={() => submitReply(reply.id)}
+            disabled={replyingId === reply.id}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#0F172A] px-3 text-xs font-black text-white disabled:opacity-60"
+          >
+            {replyingId === reply.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+            Gửi
+          </button>
+        </div>
+      )}
+
+      {reply.replies.length > 0 && (
+        <div className="mt-3 space-y-2 pl-3">
+          {reply.replies.map((nested) => renderReply(nested, depth + 1))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#FBFCFF] py-9">
@@ -101,7 +193,7 @@ export default function Feedback() {
               <p className="text-xs font-bold text-slate-500">Đánh giá</p>
             </div>
             <div className="rounded-2xl bg-white px-5 py-4 shadow-sm">
-              <p className="text-2xl font-black text-[#101828]">{replyCount}</p>
+              <p className="text-2xl font-black text-[#101828]">{totalReplyCount}</p>
               <p className="text-xs font-bold text-slate-500">Phản hồi</p>
             </div>
             <div className="rounded-2xl bg-white px-5 py-4 shadow-sm">
@@ -193,31 +285,35 @@ export default function Feedback() {
                           className="inline-flex items-center gap-2 text-[#101828] transition hover:text-[#FF5A1F]"
                         >
                           <MessageSquare className="h-4 w-4" />
-                          {isExpanded ? "Ẩn phản hồi" : `Thêm ${item.replies.length ? `(${item.replies.length} phản hồi)` : ""}`}
+                          {isExpanded ? "Ẩn phản hồi" : `Phản hồi${item.replies.length ? ` (${countReplies(item)})` : ""}`}
                         </button>
                       </div>
 
                       {isExpanded && (
                         <div className="mt-5 space-y-3 border-l-2 border-[#FFE0D2] pl-4">
-                          {item.replies.length ? item.replies.map((reply) => (
-                            <div key={reply.id} className="rounded-2xl bg-[#F8FAFC] p-4">
-                              <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-xs font-black text-[#FF5A1F]">
-                                    {getInitials(reply.authorName)}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-black text-[#101828]">{reply.authorName}</p>
-                                    <p className="text-xs font-bold text-slate-400">
-                                      {roleLabel(reply.authorRole)} · {new Date(reply.createdAt).toLocaleString("vi-VN")}
-                                    </p>
-                                  </div>
-                                </div>
-                                <CalendarDays className="h-4 w-4 text-slate-300" />
-                              </div>
-                              <p className="mt-3 whitespace-pre-line text-sm font-medium leading-6 text-[#344054]">{reply.content}</p>
+                          {isLoggedIn && (
+                            <div className="flex gap-2">
+                              <input
+                                value={replyDrafts[item.id] || ""}
+                                onChange={(e) => setReplyDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
+                                className="h-10 min-w-0 flex-1 rounded-xl border border-[#E8EDF5] bg-white px-3 text-sm font-semibold outline-none transition focus:border-[#FF5A1F]"
+                                placeholder="Viết phản hồi..."
+                              />
+                              <button
+                                type="button"
+                                onClick={() => submitReply(item.id)}
+                                disabled={replyingId === item.id}
+                                className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#0F172A] px-4 text-sm font-black text-white disabled:opacity-60"
+                              >
+                                {replyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                Gửi
+                              </button>
                             </div>
-                          )) : (
+                          )}
+
+                          {item.replies.length > 0 ? (
+                            item.replies.map((reply) => renderReply(reply, 1))
+                          ) : (
                             <div className="rounded-2xl bg-[#F8FAFC] p-4 text-sm font-semibold text-slate-500">
                               Chưa có phản hồi cho đánh giá này.
                             </div>

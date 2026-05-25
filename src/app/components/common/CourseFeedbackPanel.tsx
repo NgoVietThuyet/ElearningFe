@@ -29,6 +29,10 @@ function getInitials(name?: string) {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
+function countReplies(item: CourseFeedback): number {
+  return item.replies.reduce((sum, r) => sum + 1 + countReplies(r), 0);
+}
+
 function roleLabel(role?: string) {
   if (role === "TEACHER") return "Giảng viên";
   if (role === "ADMIN") return "Quản trị viên";
@@ -110,6 +114,64 @@ export default function CourseFeedbackPanel({ courseId, teacherId, canWrite = tr
       setReplyingId(null);
     }
   };
+
+  const renderReply = (reply: CourseFeedback, depth: number = 1) => (
+    <div key={reply.id} className="rounded-2xl bg-[#F8FAFC] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center justify-center rounded-full bg-white text-xs font-black text-[#FF5A1F] ${depth <= 1 ? "h-9 w-9" : "h-7 w-7"}`}>
+            {getInitials(reply.authorName)}
+          </div>
+          <div>
+            <p className="text-sm font-black text-[#0F172A]">{reply.authorName}</p>
+            <p className="text-xs font-bold text-[#98A2B3]">
+              {roleLabel(reply.authorRole)} · {new Date(reply.createdAt).toLocaleString("vi-VN")}
+            </p>
+          </div>
+        </div>
+      </div>
+      <p className={`mt-3 whitespace-pre-line font-medium leading-6 text-[#344054] ${depth <= 1 ? "text-sm" : "text-xs"}`}>{reply.content}</p>
+
+      {canWrite && (
+        <div className="mt-3 flex items-center gap-4 text-xs font-black">
+          <button
+            type="button"
+            onClick={() => setExpandedReplies((current) => ({ ...current, [reply.id]: !current[reply.id] }))}
+            className="text-[#0F172A] transition hover:text-[#FF5A1F]"
+          >
+            <MessageSquare className="mr-1 inline h-3.5 w-3.5" />
+            {expandedReplies[reply.id] ? "Ẩn" : "Phản hồi"}
+          </button>
+        </div>
+      )}
+
+      {expandedReplies[reply.id] && canWrite && (
+        <div className="mt-3 flex gap-2">
+          <input
+            value={replyDrafts[reply.id] || ""}
+            onChange={(e) => setReplyDrafts((d) => ({ ...d, [reply.id]: e.target.value }))}
+            className="h-9 min-w-0 flex-1 rounded-xl border border-[#E8EDF5] bg-white px-3 text-xs font-semibold outline-none transition focus:border-[#FF5A1F]"
+            placeholder="Viết phản hồi..."
+          />
+          <button
+            type="button"
+            onClick={() => submitReply(reply.id)}
+            disabled={replyingId === reply.id}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#0F172A] px-3 text-xs font-black text-white disabled:opacity-60"
+          >
+            {replyingId === reply.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+            Gửi
+          </button>
+        </div>
+      )}
+
+      {reply.replies.length > 0 && (
+        <div className="mt-3 space-y-2 pl-3">
+          {reply.replies.map((nested) => renderReply(nested, depth + 1))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <section className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 shadow-sm">
@@ -196,47 +258,37 @@ export default function CourseFeedbackPanel({ courseId, teacherId, canWrite = tr
                       onClick={() => setExpandedReplies((current) => ({ ...current, [item.id]: !current[item.id] }))}
                       className="text-[#0F172A] transition hover:text-[#FF5A1F]"
                     >
-                      {expandedReplies[item.id] ? "Ẩn phản hồi" : `Thêm ${item.replies.length ? `(${item.replies.length} phản hồi)` : ""}`}
+                      {expandedReplies[item.id] ? "Ẩn phản hồi" : `Phản hồi${item.replies.length ? ` (${countReplies(item)})` : ""}`}
                     </button>
                   </div>
 
                   {expandedReplies[item.id] && (
                   <div className="mt-5 space-y-3 border-l-2 border-[#FFE0D2] pl-4">
-                    {item.replies.map((reply) => (
-                      <div key={reply.id} className="rounded-2xl bg-[#F8FAFC] p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-xs font-black text-[#FF5A1F]">
-                              {getInitials(reply.authorName)}
-                            </div>
-                            <div>
-                              <p className="text-sm font-black text-[#0F172A]">{reply.authorName}</p>
-                              <p className="text-xs font-bold text-[#98A2B3]">{new Date(reply.createdAt).toLocaleString("vi-VN")}</p>
-                            </div>
-                          </div>
-                          <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black uppercase text-[#667085]">{roleLabel(reply.authorRole)}</span>
-                        </div>
-                        <p className="mt-3 whitespace-pre-line text-sm font-medium leading-6 text-[#344054]">{reply.content}</p>
-                      </div>
-                    ))}
-
                     {canWrite && (
-                      <div className="flex gap-3 pt-2">
+                      <div className="flex gap-2">
                         <input
                           value={replyDrafts[item.id] || ""}
                           onChange={(event) => setReplyDrafts((drafts) => ({ ...drafts, [item.id]: event.target.value }))}
-                          className="h-11 min-w-0 flex-1 rounded-xl border border-[#E8EDF5] bg-white px-4 text-sm font-semibold outline-none transition focus:border-[#FF5A1F]"
+                          className="h-10 min-w-0 flex-1 rounded-xl border border-[#E8EDF5] bg-white px-3 text-sm font-semibold outline-none transition focus:border-[#FF5A1F]"
                           placeholder="Viết phản hồi..."
                         />
                         <button
                           type="button"
                           onClick={() => submitReply(item.id)}
                           disabled={replyingId === item.id}
-                          className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#0F172A] px-4 text-sm font-black text-white disabled:opacity-60"
+                          className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#0F172A] px-4 text-sm font-black text-white disabled:opacity-60"
                         >
                           {replyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                           Gửi
                         </button>
+                      </div>
+                    )}
+
+                    {item.replies.length > 0 ? (
+                      item.replies.map((reply) => renderReply(reply, 1))
+                    ) : (
+                      <div className="rounded-2xl bg-[#F8FAFC] p-4 text-sm font-semibold text-slate-500">
+                        Chưa có phản hồi cho đánh giá này.
                       </div>
                     )}
                   </div>

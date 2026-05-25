@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Use Case Diagrams — EduSmart</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #f5f7fa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 1200px; width: 100%; }
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 0.25rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      margin-bottom: 2.5rem;
+      font-size: 0.95rem;
+    }
+    .diagram-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      padding: 1.5rem 1.5rem 0.5rem;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .diagram-card h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 0.25rem;
+    }
+    .diagram-card .desc {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 1rem;
+    }
+    .mermaid-wrapper { overflow-x: auto; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+      background: #e2e8f0;
+      padding: 0.25rem;
+      border-radius: 0.75rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 0.65rem 1rem;
+      border: none;
+      border-radius: 0.6rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: transparent;
+      color: #475569;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { color: #0f172a; }
+    .tab-btn.active {
+      background: #fff;
+      color: #ff5a1f;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #475569;
+      margin-bottom: 1rem;
+      transition: all 0.2s;
+    }
+    .copy-btn:hover { background: #fff; border-color: #ff5a1f; color: #ff5a1f; }
+    .copy-btn.copied { background: #ecfdf5; border-color: #22c55e; color: #22c55e; }
+    pre.source {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      margin-top: 1rem;
+      display: none;
+    }
+    pre.source.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧬 EduSmart — Use Case Diagrams</h1>
+    <p class="subtitle">Hệ thống học Sinh học trực tuyến</p>
+
+    <!-- Tabs -->
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="general">Tổng quát</button>
+      <button class="tab-btn" data-tab="admin">Admin</button>
+      <button class="tab-btn" data-tab="teacher">Teacher</button>
+      <button class="tab-btn" data-tab="student">Student</button>
+    </div>
+
+    <!-- General -->
+    <div class="tab-content active" id="tab-general">
+      <div class="diagram-card">
+        <h2>🔭 Use Case Tổng Quát</h2>
+        <p class="desc">Toàn bộ actors và các use case chính của hệ thống</p>
+        <button class="copy-btn" data-source="src-general">📋 Copy Mermaid code</button>
+        <pre class="source" id="src-general">
+usecaseDiagram
+    actor Khách as "Khách\n(Guest)"
+    actor HọcSinh as "Học Sinh\n(Student)"
+    actor GiáoViên as "Giáo Viên\n(Teacher)"
+    actor QuảnTrị as "Quản Trị\n(Admin)"
+
+    note right of Khách : Chưa đăng nhập
+
+    === Khách ===
+    Khách --> (Đăng ký tài khoản)
+    Khách --> (Đăng nhập)
+    Khách --> (Xem khóa học công khai)
+    Khách --> (Xem tin tức)
+
+    === Học Sinh ===
+    HọcSinh --> (Xem dashboard học tập)
+    HọcSinh --> (Xem khóa học đã đăng ký)
+    HọcSinh --> (Xem chi tiết bài giảng)
+    HọcSinh --> (Làm bài kiểm tra trắc nghiệm)
+    HọcSinh --> (Nộp bài thi)
+    HọcSinh --> (Theo dõi tiến độ học tập)
+    HọcSinh --> (Gửi phản hồi)
+
+    === Giáo Viên ===
+    GiáoViên --> (Xem dashboard giảng dạy)
+    GiáoViên --> (Quản lý học sinh)
+    GiáoViên --> (Ghi danh học sinh vào khóa học)
+    GiáoViên --> (Quản lý bài giảng) #CRUD
+    GiáoViên --> (Tạo bài kiểm tra thủ công)
+    GiáoViên --> (Upload PDF tự động tạo quiz)
+    GiáoViên --> (Xem báo cáo thống kê)
+    GiáoViên --> (Xem và trả lời phản hồi)
+
+    === Quản Trị ===
+    QuảnTrị --> (Quản lý người dùng)
+    QuảnTrị --> (Quản lý khóa học)
+    QuảnTrị --> (Quản lý tin tức)
+    QuảnTrị --> (Xem thống kê hệ thống)
+
+    === Quan hệ kế thừa ===
+    HọcSinh --|> Khách
+    GiáoViên --|> Khách
+    QuảnTrị --|> Khách
+        </pre>
+        <div class="mermaid-wrapper">
+          <pre class="mermaid">
+            flowchart TD
+              Khách["Khách<br/>(Guest)"]
+              HọcSinh["Học Sinh<br/>(Student)"]
+              GiáoViên["Giáo Viên<br/>(Teacher)"]
+              Admin["Quản Trị<br/>(Admin)"]
+
+              subgraph Chung["Chức năng chung"]
+                DK(Đăng ký tài khoản)
+                DN(Đăng nhập)
+                XK(Xem khóa học công khai)
+                XT(Xem tin tức)
+              end
+
+              subgraph Student["Học Sinh"]
+                SD(Xem dashboard học tập)
+                SK(Xem khóa học đã đăng ký)
+                BG(Xem chi tiết bài giảng)
+                QT(Làm bài kiểm tra trắc nghiệm)
+                NB(Nộp bài thi)
+                TD(Theo dõi tiến độ học tập)
+                PH(Gửi phản hồi)
+              end
+
+              subgraph Teacher["Giáo Viên"]
+                TDash(Xem dashboard giảng dạy)
+                QLHS(Quản lý học sinh)
+                GH(Ghi danh học sinh vào khóa học)
+                QLBG(Quản lý bài giảng)
+                TQT(Tạo bài kiểm tra thủ công)
+                UP(Upload PDF tự động tạo quiz)
+                BC(Xem báo cáo thống kê)
+                PH2(Xem và trả lời phản hồi)
+              end
+
+              subgraph AdminPanel["Quản Trị"]
+                QLND(Quản lý người dùng)
+                QLKH(Quản lý khóa học)
+                QLTT(Quản lý tin tức)
+                TK(Xem thống kê hệ thống)
+              end
+
+              Khách --> DK
+              Khách --> DN
+              Khách --> XK
+              Khách --> XT
+
+              HọcSinh --> SD
+              HọcSinh --> SK
+              HọcSinh --> BG
+              HọcSinh --> QT
+              HọcSinh --> NB
+              HọcSinh --> TD
+              HọcSinh --> PH
+
+              GiáoViên --> TDash
+              GiáoViên --> QLHS
+              GiáoViên --> GH
+              GiáoViên --> QLBG
+              GiáoViên --> TQT
+              GiáoViên --> UP
+              GiáoViên --> BC
+              GiáoViên --> PH2
+
+              Admin --> QLND
+              Admin --> QLKH
+              Admin --> QLTT
+              Admin --> TK
+
+              HọcSinh --|> Khách
+              GiáoViên --|> Khách
+              Admin --|> Khách
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin -->
+    <div class="tab-content" id="tab-admin">
+      <div class="diagram-card">
+        <h2>🛡️ Use Case — Admin</h2>
+        <p class="desc">Chức năng dành cho Quản trị viên</p>
+        <button class="copy-btn" data-source="src-admin">📋 Copy Mermaid code</button>
+        <pre class="source" id="src-admin">
+usecaseDiagram
+    actor Admin as "Quản Trị Viên"
+
+    package "Quản lý Người dùng" {
+        UC01 -- (Xem danh sách người dùng)
+        UC02 -- (Tạo tài khoản mới)
+        UC03 -- (Cập nhật thông tin)
+        UC04 -- (Vô hiệu hóa / Kích hoạt)
+        UC05 -- (Phân quyền)
+    }
+
+    package "Quản lý Khóa học" {
+        UC06 -- (Xem danh sách khóa học)
+        UC07 -- (Tạo khóa học mới)
+        UC08 -- (Sắp xếp thứ tự khóa học)
+        UC09 -- (Xóa khóa học)
+    }
+
+    package "Quản lý Tin tức" {
+        UC10 -- (Đăng tin mới)
+        UC11 -- (Chỉnh sửa tin)
+        UC12 -- (Xóa tin)
+    }
+
+    package "Thống kê Hệ thống" {
+        UC13 -- (Xem tổng quan)
+        UC14 -- (Xem biểu đồ thống kê)
+    }
+
+    Admin --> UC01
+    Admin --> UC02
+    Admin --> UC03
+    Admin --> UC04
+    Admin --> UC05
+    Admin --> UC06
+    Admin --> UC07
+    Admin --> UC08
+    Admin --> UC09
+    Admin --> UC10
+    Admin --> UC11
+    Admin --> UC12
+    Admin --> UC13
+    Admin --> UC14
+        </pre>
+        <div class="mermaid-wrapper">
+          <pre class="mermaid">
+            flowchart TD
+              Admin["🛡️ Quản Trị Viên"]
+
+              subgraph Users["Quản lý Người dùng"]
+                U1(Xem danh sách người dùng)
+                U2(Tạo tài khoản mới)
+                U3(Cập nhật thông tin)
+                U4(Vô hiệu hóa / Kích hoạt)
+                U5(Phân quyền)
+              end
+
+              subgraph Courses["Quản lý Khóa học"]
+                C1(Xem danh sách khóa học)
+                C2(Tạo khóa học mới)
+                C3(Sắp xếp thứ tự khóa học)
+                C4(Xóa khóa học)
+              end
+
+              subgraph News["Quản lý Tin tức"]
+                N1(Đăng tin mới)
+                N2(Chỉnh sửa tin)
+                N3(Xóa tin)
+              end
+
+              subgraph Stats["Thống kê Hệ thống"]
+                S1(Xem tổng quan)
+                S2(Xem biểu đồ thống kê)
+              end
+
+              Admin --> U1
+              Admin --> U2
+              Admin --> U3
+              Admin --> U4
+              Admin --> U5
+              Admin --> C1
+              Admin --> C2
+              Admin --> C3
+              Admin --> C4
+              Admin --> N1
+              Admin --> N2
+              Admin --> N3
+              Admin --> S1
+              Admin --> S2
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Teacher -->
+    <div class="tab-content" id="tab-teacher">
+      <div class="diagram-card">
+        <h2>👨‍🏫 Use Case — Teacher</h2>
+        <p class="desc">Chức năng dành cho Giáo viên</p>
+        <button class="copy-btn" data-source="src-teacher">📋 Copy Mermaid code</button>
+        <pre class="source" id="src-teacher">
+usecaseDiagram
+    actor Teacher as "Giáo Viên"
+
+    package "Dashboard" {
+        UC01 -- (Xem tổng quan giảng dạy)
+        UC02 -- (Xem tiến độ khóa học)
+    }
+
+    package "Quản lý Học sinh" {
+        UC03 -- (Thêm học sinh vào lớp)
+        UC04 -- (Xóa học sinh khỏi lớp)
+        UC05 -- (Ghi danh vào khóa học)
+    }
+
+    package "Quản lý Bài giảng" {
+        UC06 -- (Tạo bài giảng mới)
+        UC07 -- (Cập nhật bài giảng)
+        UC08 -- (Xóa bài giảng)
+        UC09 -- (Đính kèm tài nguyên: video, PDF, slide)
+    }
+
+    package "Bài kiểm tra" {
+        UC10 -- (Tạo bài kiểm tra thủ công)
+        UC11 -- (Thêm câu hỏi trắc nghiệm)
+        UC12 -- (Upload PDF tự động parse quiz)
+        UC13 -- (Xem báo cáo kết quả)
+    }
+
+    package "Phản hồi" {
+        UC14 -- (Xem phản hồi từ học sinh)
+        UC15 -- (Trả lời phản hồi)
+    }
+
+    package "Báo cáo" {
+        UC16 -- (Xem báo cáo học tập)
+    }
+
+    Teacher --> UC01
+    Teacher --> UC02
+    Teacher --> UC03
+    Teacher --> UC04
+    Teacher --> UC05
+    Teacher --> UC06
+    Teacher --> UC07
+    Teacher --> UC08
+    Teacher --> UC09
+    Teacher --> UC10
+    Teacher --> UC11
+    Teacher --> UC12
+    Teacher --> UC13
+    Teacher --> UC14
+    Teacher --> UC15
+    Teacher --> UC16
+        </pre>
+        <div class="mermaid-wrapper">
+          <pre class="mermaid">
+            flowchart TD
+              Teacher["👨‍🏫 Giáo Viên"]
+
+              subgraph Dashboard["Dashboard"]
+                D1(Xem tổng quan giảng dạy)
+                D2(Xem tiến độ khóa học)
+              end
+
+              subgraph Students["Quản lý Học sinh"]
+                S1(Thêm học sinh vào lớp)
+                S2(Xóa học sinh khỏi lớp)
+                S3(Ghi danh vào khóa học)
+              end
+
+              subgraph Lessons["Quản lý Bài giảng"]
+                L1(Tạo bài giảng mới)
+                L2(Cập nhật bài giảng)
+                L3(Xóa bài giảng)
+                L4(Đính kèm tài nguyên: video, PDF, slide)
+              end
+
+              subgraph Quiz["Bài kiểm tra"]
+                Q1(Tạo bài kiểm tra thủ công)
+                Q2(Thêm câu hỏi trắc nghiệm)
+                Q3(Upload PDF tự động parse quiz)
+                Q4(Xem báo cáo kết quả)
+              end
+
+              subgraph Feedback["Phản hồi"]
+                F1(Xem phản hồi từ học sinh)
+                F2(Trả lời phản hồi)
+              end
+
+              subgraph Report["Báo cáo"]
+                R1(Xem báo cáo học tập)
+              end
+
+              Teacher --> D1
+              Teacher --> D2
+              Teacher --> S1
+              Teacher --> S2
+              Teacher --> S3
+              Teacher --> L1
+              Teacher --> L2
+              Teacher --> L3
+              Teacher --> L4
+              Teacher --> Q1
+              Teacher --> Q2
+              Teacher --> Q3
+              Teacher --> Q4
+              Teacher --> F1
+              Teacher --> F2
+              Teacher --> R1
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student -->
+    <div class="tab-content" id="tab-student">
+      <div class="diagram-card">
+        <h2>🎓 Use Case — Student</h2>
+        <p class="desc">Chức năng dành cho Học sinh</p>
+        <button class="copy-btn" data-source="src-student">📋 Copy Mermaid code</button>
+        <pre class="source" id="src-student">
+usecaseDiagram
+    actor Student as "Học Sinh"
+
+    package "Dashboard" {
+        UC01 -- (Xem tổng quan học tập)
+        UC02 -- (Xem tiến độ tổng thể)
+    }
+
+    package "Khóa học" {
+        UC03 -- (Xem danh sách khóa học đã đăng ký)
+        UC04 -- (Xem lộ trình học tập)
+    }
+
+    package "Bài giảng" {
+        UC05 -- (Xem chi tiết bài giảng)
+        UC06 -- (Xem video bài học)
+        UC07 -- (Xem tài liệu PDF, slide)
+        UC08 -- (Đánh dấu hoàn thành bài giảng)
+    }
+
+    package "Bài kiểm tra" {
+        UC09 -- (Làm bài kiểm tra trắc nghiệm)
+        UC10 -- (Nộp bài thi)
+        UC11 -- (Xem kết quả và điểm số)
+    }
+
+    package "Phản hồi" {
+        UC12 -- (Gửi phản hồi cho giáo viên)
+    }
+
+    Student --> UC01
+    Student --> UC02
+    Student --> UC03
+    Student --> UC04
+    Student --> UC05
+    Student --> UC06
+    Student --> UC07
+    Student --> UC08
+    Student --> UC09
+    Student --> UC10
+    Student --> UC11
+    Student --> UC12
+        </pre>
+        <div class="mermaid-wrapper">
+          <pre class="mermaid">
+            flowchart TD
+              Student["🎓 Học Sinh"]
+
+              subgraph Dashboard["Dashboard"]
+                D1(Xem tổng quan học tập)
+                D2(Xem tiến độ tổng thể)
+              end
+
+              subgraph Courses["Khóa học"]
+                C1(Xem danh sách khóa học đã đăng ký)
+                C2(Xem lộ trình học tập)
+              end
+
+              subgraph Lessons["Bài giảng"]
+                L1(Xem chi tiết bài giảng)
+                L2(Xem video bài học)
+                L3(Xem tài liệu PDF, slide)
+                L4(Đánh dấu hoàn thành bài giảng)
+              end
+
+              subgraph Quiz["Bài kiểm tra"]
+                Q1(Làm bài kiểm tra trắc nghiệm)
+                Q2(Nộp bài thi)
+                Q3(Xem kết quả và điểm số)
+              end
+
+              subgraph Feedback["Phản hồi"]
+                F1(Gửi phản hồi cho giáo viên)
+              end
+
+              Student --> D1
+              Student --> D2
+              Student --> C1
+              Student --> C2
+              Student --> L1
+              Student --> L2
+              Student --> L3
+              Student --> L4
+              Student --> Q1
+              Student --> Q2
+              Student --> Q3
+              Student --> F1
+          </pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+      });
+    });
+
+    // Copy source code
+    document.querySelectorAll(".copy-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.source;
+        const src = document.getElementById(id);
+        const code = src.textContent.trim();
+        try {
+          await navigator.clipboard.writeText(code);
+          btn.classList.add("copied");
+          btn.textContent = "✅ Copied!";
+          setTimeout(() => {
+            btn.classList.remove("copied");
+            btn.textContent = "📋 Copy Mermaid code";
+          }, 2000);
+        } catch {
+          src.classList.toggle("show");
+          btn.textContent = src.classList.contains("show") ? "🔽 Hide source" : "📋 Copy Mermaid code";
+        }
+      });
+    });
+
+    // Initialize Mermaid
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "default",
+      securityLevel: "loose",
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: "basis"
+      }
+    });
+  </script>
+</body>
+</html>

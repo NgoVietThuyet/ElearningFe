@@ -81,6 +81,9 @@ export function useSse(
       "lesson-completed",
       "test-submitted",
       "progress-changed",
+      "enrollment-requested",
+      "enrollment-status-changed",
+      "notification-received",
     ];
 
     for (const eventName of knownEvents) {

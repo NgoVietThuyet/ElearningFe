@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { jwtDecode } from "jwt-decode";
+import { useSse } from "../api/sseClient";
 import {
   ArrowRight,
   BookOpen,
@@ -14,6 +15,7 @@ import {
   GraduationCap,
   Layers3,
   Loader2,
+  Lock,
   MessageSquare,
   Play,
   Plus,
@@ -248,6 +250,11 @@ export default function CourseDetail() {
     { id: number; fullName: string; email: string }[]
   >([]);
   const [studentEmailQuery, setStudentEmailQuery] = useState("");
+  const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
+  const [enrollRequestStatus, setEnrollRequestStatus] = useState<
+    "PENDING" | "APPROVED" | "REJECTED" | "NONE"
+  >("NONE");
+  const [isRequestingEnroll, setIsRequestingEnroll] = useState<boolean>(false);
   const [selectedStudent, setSelectedStudent] = useState<{
     id: number;
     fullName: string;
@@ -292,7 +299,11 @@ export default function CourseDetail() {
     if (!selectedStudent || !course) return;
     setIsEnrolling(true);
     try {
-      await teacherApi.enrollStudent(course.id, selectedStudent.email);
+      if (role === "ADMIN") {
+        await adminApi.enrollStudent(course.id, selectedStudent.email);
+      } else {
+        await teacherApi.enrollStudent(course.id, selectedStudent.email);
+      }
       toast.success(`Đã thêm ${selectedStudent.fullName} vào khóa học!`);
       await fetchCourse(String(course.id));
       setIsAddStudentOpen(false);
@@ -308,9 +319,35 @@ export default function CourseDetail() {
     }
   };
 
+  const handleStudentRequestEnroll = async () => {
+    if (!course) return;
+    setIsRequestingEnroll(true);
+    try {
+      const res = await studentApi.requestEnroll(course.id);
+      toast.success(res.data.message || "Gửi yêu cầu đăng ký thành công! Đang chờ Admin phê duyệt.");
+      setEnrollRequestStatus("PENDING");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể gửi yêu cầu đăng ký.");
+    } finally {
+      setIsRequestingEnroll(false);
+    }
+  };
+
   const fetchCourse = async (courseId: string) => {
     const res = await publicApi.getCourseById(courseId);
     setCourse(res.data);
+
+    const token = localStorage.getItem("token");
+    const userRole = getRoleFromToken(token);
+    if (userRole === "STUDENT") {
+      try {
+        const statusRes = await studentApi.getEnrollmentStatus(courseId);
+        setIsEnrolled(statusRes.data.isEnrolled);
+        setEnrollRequestStatus(statusRes.data.requestStatus);
+      } catch (err) {
+        console.error("Failed to load enrollment status in fetchCourse", err);
+      }
+    }
   };
 
   const fetchFeedbacks = async (courseId: string | number) => {
@@ -324,6 +361,20 @@ export default function CourseDetail() {
       setIsFeedbackLoading(false);
     }
   };
+
+  const handleStudentSseEvent = useCallback((eventName: string, data: any) => {
+    if (eventName === "enrollment-status-changed") {
+      if (data && Number(data.courseId) === Number(id)) {
+        toast.info(data.message || "Trạng thái đăng ký khóa học của bạn đã thay đổi!");
+        if (id) {
+          fetchCourse(String(id));
+          fetchFeedbacks(id);
+        }
+      }
+    }
+  }, [id]);
+
+  useSse(role === "STUDENT" ? "student" : null, handleStudentSseEvent);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -367,63 +418,59 @@ export default function CourseDetail() {
         const courseData = courseRes.data;
 
         if (userRole === "STUDENT") {
-          let isEnrolled = false;
+          let enrolled = false;
+          let reqStatus: "PENDING" | "APPROVED" | "REJECTED" | "NONE" = "NONE";
 
           try {
-            const studentCoursesRes = await studentApi.getCourses();
-            const studentCourses = studentCoursesRes.data || [];
-            isEnrolled = studentCourses.some(
-              (c: any) => c.id === courseData.id,
-            );
-          } catch (studentErr) {
-            console.error(
-              "Failed to load student courses for verification",
-              studentErr,
-            );
-          }
-
-          if (!isEnrolled && email && courseData.students) {
-            isEnrolled = courseData.students.some(
-              (s: any) => s.email?.toLowerCase() === email.toLowerCase(),
-            );
-          }
-
-          if (!isEnrolled) {
-            toast.error("🔒 Bạn không có trong khóa học này");
-            navigate("/courses", { replace: true });
-            return;
-          }
-
-          // ── Prerequisite gate check ──────────────────────────────────────
-          // After confirming enrollment, check if this course is locked
-          // (i.e., the previous course in the ordered sequence is not 100% complete)
-          try {
-            const studentCoursesFull = await studentApi.getCourses();
-            const allStudentCourses: any[] = studentCoursesFull.data || [];
-            const sortedCourses = sortCoursesByOrder(allStudentCourses);
-            const progressMap: Record<number, number> = {};
-            for (const c of allStudentCourses) {
-              progressMap[c.id] = c.progress ?? 0;
-            }
-            const courseIndex = sortedCourses.findIndex(
-              (c: any) => c.id === courseData.id,
-            );
-            if (courseIndex > 0 && !isCourseUnlocked(courseIndex, sortedCourses, progressMap)) {
-              const prereqName = getPrerequisiteCourseName(courseIndex, sortedCourses);
-              const prevProgress = getPreviousCourseProgress(courseIndex, sortedCourses, progressMap);
-              toast.error(
-                `🔒 Bạn cần hoàn thành 100% "${prereqName}" (hiện tại: ${prevProgress}%) để mở khóa học này`,
+            const statusRes = await studentApi.getEnrollmentStatus(courseData.id);
+            enrolled = statusRes.data.isEnrolled;
+            reqStatus = statusRes.data.requestStatus;
+          } catch (err) {
+            console.error("Failed to fetch enrollment status on init", err);
+            try {
+              const studentCoursesRes = await studentApi.getCourses();
+              const studentCourses = studentCoursesRes.data || [];
+              enrolled = studentCourses.some((c: any) => c.id === courseData.id);
+            } catch {}
+            if (!enrolled && email && courseData.students) {
+              enrolled = courseData.students.some(
+                (s: any) => s.email?.toLowerCase() === email.toLowerCase(),
               );
+            }
+          }
+
+          setIsEnrolled(enrolled);
+          setEnrollRequestStatus(reqStatus);
+
+          if (enrolled) {
+            // ── Prerequisite gate check ──────────────────────────────────────
+            try {
+              const studentCoursesFull = await studentApi.getCourses();
+              const allStudentCourses: any[] = studentCoursesFull.data || [];
+              const sortedCourses = sortCoursesByOrder(allStudentCourses);
+              const progressMap: Record<number, number> = {};
+              for (const c of allStudentCourses) {
+                progressMap[c.id] = c.progress ?? 0;
+              }
+              const courseIndex = sortedCourses.findIndex(
+                (c: any) => c.id === courseData.id,
+              );
+              if (courseIndex > 0 && !isCourseUnlocked(courseIndex, sortedCourses, progressMap)) {
+                const prereqName = getPrerequisiteCourseName(courseIndex, sortedCourses);
+                const prevProgress = getPreviousCourseProgress(courseIndex, sortedCourses, progressMap);
+                toast.error(
+                  `🔒 Bạn cần hoàn thành 100% "${prereqName}" (hiện tại: ${prevProgress}%) để mở khóa học này`,
+                );
+                navigate("/student", { replace: true });
+                return;
+              }
+            } catch (prereqErr) {
+              console.error("Prerequisite check failed, blocking access", prereqErr);
+              toast.error("🔒 Không thể xác thực điều kiện tiên quyết. Vui lòng thử lại sau.");
               navigate("/student", { replace: true });
               return;
             }
-          } catch (prereqErr) {
-            console.error("Prerequisite check failed, blocking access", prereqErr);
-            toast.error("🔒 Không thể xác thực điều kiện tiên quyết. Vui lòng thử lại sau.");
-            navigate("/student", { replace: true });
-            return;
           }
-          // ────────────────────────────────────────────────────────────────
         }
 
         setCourse(courseData);
@@ -590,13 +637,20 @@ export default function CourseDetail() {
   const tabs: Array<{ id: TabKey; label: string; count: number | null }> = [
     { id: "overview", label: "Tổng quan", count: null },
     { id: "lessons", label: "Nội dung khóa học", count: course.lessons.length },
-    { id: "resources", label: "Tài liệu", count: resourceCount },
-    {
-      id: "students",
-      label: "Học viên",
-      count: course.students.length || course.studentCount,
-    },
-    { id: "feedback", label: "Đánh giá khóa học", count: feedbacks.length },
+    ...(role === "STUDENT" && !isEnrolled
+      ? []
+      : [
+          {
+            id: "students" as const,
+            label: "Học viên",
+            count: course.students.length || course.studentCount,
+          },
+          {
+            id: "feedback" as const,
+            label: "Đánh giá khóa học",
+            count: feedbacks.length,
+          },
+        ]),
   ];
 
   return (
@@ -651,6 +705,54 @@ export default function CourseDetail() {
           </section>
 
           <aside className="rounded-[28px] border border-[#E8EDF5] bg-white p-7 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+            {role === "STUDENT" && !isEnrolled && (
+              <div className="mb-6 rounded-2xl bg-gradient-to-br from-[#FFF4EC] to-white p-5 border border-[#FFE2D1] shadow-sm text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF1EB] text-[#FF5A1F] mb-3">
+                  <UserPlus className="h-6 w-6 animate-pulse" />
+                </div>
+                <h4 className="text-base font-black text-[#0F172A]">Tham gia khóa học</h4>
+                <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-500">
+                  Khóa học này đang đóng. Hãy đăng ký ngay để mở khóa toàn bộ bài giảng và tài liệu học tập hữu ích!
+                </p>
+                
+                {enrollRequestStatus === "NONE" || enrollRequestStatus === "REJECTED" ? (
+                  <div className="mt-4 space-y-2">
+                    {enrollRequestStatus === "REJECTED" && (
+                      <p className="text-[10px] font-bold text-red-500 bg-red-50 py-1.5 px-2 rounded-lg leading-relaxed">
+                        ⚠️ Yêu cầu trước đó đã bị từ chối. Bạn có thể gửi lại yêu cầu đăng ký mới.
+                      </p>
+                    )}
+                    <button
+                      onClick={handleStudentRequestEnroll}
+                      disabled={isRequestingEnroll}
+                      className="w-full flex h-11 items-center justify-center gap-2 rounded-xl bg-[#FF5A1F] text-sm font-black text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#E84A0C] active:scale-[0.98]"
+                    >
+                      {isRequestingEnroll ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Đăng ký khóa học"
+                      )}
+                    </button>
+                  </div>
+                ) : enrollRequestStatus === "PENDING" ? (
+                  <div className="mt-4">
+                    <button
+                      disabled
+                      className="w-full flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-100 border border-slate-200 text-sm font-bold text-slate-400 cursor-not-allowed"
+                    >
+                      <span className="relative flex h-2 w-2 mr-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                      </span>
+                      Đang chờ duyệt...
+                    </button>
+                    <p className="mt-2 text-[10px] font-bold text-[#FF5A1F]">
+                      Yêu cầu của bạn đang chờ Admin phê duyệt.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            )}
             <div className="space-y-1">
               {[
                 { icon: UserRound, label: "Giảng viên", value: teacherName },
@@ -747,23 +849,23 @@ export default function CourseDetail() {
                     <span className="rounded-full bg-[#FFF4EC] px-3 py-1 text-xs font-black text-[#FF5A1F]">
                       {course.lessons.length} bài học
                     </span>
+                    {role === "ADMIN" && (
+                      <button
+                        onClick={openAddStudentModal}
+                        className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#2563EB] bg-white px-4 text-sm font-black text-[#2563EB] shadow-sm hover:bg-blue-50 transition"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        Thêm học sinh
+                      </button>
+                    )}
                     {canManageLessons && (
-                      <>
-                        <button
-                          onClick={openAddStudentModal}
-                          className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#2563EB] bg-white px-4 text-sm font-black text-[#2563EB] shadow-sm hover:bg-blue-50 transition"
-                        >
-                          <UserPlus className="h-4 w-4" />
-                          Thêm học sinh
-                        </button>
-                        <button
-                          onClick={() => setIsLessonModalOpen(true)}
-                          className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#FF5A1F] px-4 text-sm font-black text-white shadow-lg shadow-orange-500/20"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Them bai hoc
-                        </button>
-                      </>
+                      <button
+                        onClick={() => setIsLessonModalOpen(true)}
+                        className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#FF5A1F] px-4 text-sm font-black text-white shadow-lg shadow-orange-500/20"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Them bai hoc
+                      </button>
                     )}
                   </div>
                 </div>
@@ -809,12 +911,19 @@ export default function CourseDetail() {
                                 </div>
                               </div>
                             </div>
-                            <Link
-                              to={`/lesson/${lesson.id}`}
-                              className="inline-flex h-10 items-center rounded-xl border border-[#D8DFEA] px-4 text-xs font-black text-[#0F172A] transition hover:bg-[#F8FAFC]"
-                            >
-                              Xem bai hoc
-                            </Link>
+                            {role === "STUDENT" && !isEnrolled ? (
+                              <span className="inline-flex h-10 items-center rounded-xl bg-slate-100 px-4 text-xs font-black text-slate-400 gap-1.5 cursor-not-allowed">
+                                <Lock className="h-3.5 w-3.5" />
+                                Đăng ký để học
+                              </span>
+                            ) : (
+                              <Link
+                                to={`/lesson/${lesson.id}`}
+                                className="inline-flex h-10 items-center rounded-xl border border-[#D8DFEA] px-4 text-xs font-black text-[#0F172A] transition hover:bg-[#F8FAFC]"
+                              >
+                                Xem bài học
+                              </Link>
+                            )}
                           </div>
                         </div>
                       );

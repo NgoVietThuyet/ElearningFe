@@ -57,6 +57,25 @@ interface NewsItem {
   createdAt: string;
 }
 
+interface FeedbackItem {
+  id: number;
+  courseId: number;
+  courseTitle: string;
+  teacherId: number;
+  teacherName: string;
+  studentId?: number | null;
+  studentName: string;
+  studentEmail: string;
+  authorId?: number | null;
+  authorName: string;
+  authorRole: string;
+  parentFeedbackId?: number | null;
+  rating: number;
+  content: string;
+  status: string;
+  createdAt: string;
+}
+
 interface PublicStats {
   totalCourses: number;
   totalUsers: number;
@@ -172,11 +191,13 @@ export default function Home() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [stats, setStats] = useState<PublicStats | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<number>>(
     new Set(),
   );
+  const [feedbackIndex, setFeedbackIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -207,17 +228,22 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [coursesRes, statsRes, teachersRes, newsRes] = await Promise.all([
-          publicApi.getCourses(),
-          publicApi.getStats(),
-          publicApi.getFeaturedTeachers(),
-          publicApi.getNews(6),
-        ]);
+        const [coursesRes, statsRes, teachersRes, newsRes, feedbacksRes] =
+          await Promise.all([
+            publicApi.getCourses(),
+            publicApi.getStats(),
+            publicApi.getFeaturedTeachers(),
+            publicApi.getNews(6),
+            publicApi.getFeedbacks(5),
+          ]);
 
         setCourses(coursesRes.data || []);
         setStats(statsRes.data || null);
         setTeachers(teachersRes.data || []);
         setNews(newsRes.data || []);
+        const fb = feedbacksRes.data || [];
+        setFeedbacks(fb);
+        setFeedbackIndex(0);
       } catch (err) {
         console.error("Failed to load homepage data", err);
       } finally {
@@ -679,34 +705,66 @@ export default function Home() {
 
             <section className="mt-5 grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
               <div className="rounded-[8px] border border-slate-100 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-black tracking-tight">
-                  Học viên nói gì về GenZBio?
-                </h2>
-                <div className="mt-7 text-6xl font-black leading-none text-[#ff4f12]">
-                  “
+                <div className="mb-5 flex items-center justify-between gap-4">
+                  <h2 className="text-xl font-black tracking-tight">
+                    Học viên nói gì về GenZBio?
+                  </h2>
+                  <Link
+                    to="/feedback"
+                    className="inline-flex items-center gap-2 text-sm font-black text-slate-600 hover:text-[#ff4f12]"
+                  >
+                    Xem tất cả <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
-                <p className="mt-1 text-sm font-semibold leading-7 text-slate-600">
-                  Nội dung bài giảng dễ hiểu, trực quan và bám sát thực tế.
-                  Giảng viên tận tâm, hỗ trợ rất nhiệt tình.
-                </p>
-                <div className="mt-7 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-50 text-sm font-black text-orange-600">
-                    ES
-                  </div>
-                  <div>
-                    <p className="text-sm font-black">Cộng đồng GenZBio</p>
-                    <p className="text-xs font-semibold text-slate-500">
-                      {formatNumber(stats?.totalUsers)} người dùng trong hệ
-                      thống
+                {feedbacks.length > 0 ? (
+                  <>
+                    <div className="mt-7 flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-50 text-sm font-black text-orange-600">
+                        {getInitials(feedbacks[feedbackIndex].authorName)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-black">
+                          {feedbacks[feedbackIndex].authorName}
+                        </p>
+                        <p className="text-xs font-semibold text-slate-500">
+                          {formatDate(feedbacks[feedbackIndex].createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-1">
+                      {Array.from(
+                        { length: feedbacks[feedbackIndex].rating },
+                        (_, i) => (
+                          <Star
+                            key={i}
+                            className="h-4 w-4 fill-amber-400 text-amber-400"
+                          />
+                        ),
+                      )}
+                    </div>
+
+                    <p className="mt-1 text-sm font-semibold leading-7 text-slate-600">
+                      {feedbacks[feedbackIndex].content}
                     </p>
+                    <div className="mt-6 flex gap-2">
+                      {feedbacks.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setFeedbackIndex(i)}
+                          className={`h-2 w-2 rounded-full ${
+                            i === feedbackIndex
+                              ? "bg-[#ff4f12]"
+                              : "bg-slate-200"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-12">
+                    <EmptyState text="Chưa có đánh giá nào." />
                   </div>
-                </div>
-                <div className="mt-6 flex gap-2">
-                  <span className="h-2 w-2 rounded-full bg-[#ff4f12]" />
-                  <span className="h-2 w-2 rounded-full bg-slate-200" />
-                  <span className="h-2 w-2 rounded-full bg-slate-200" />
-                  <span className="h-2 w-2 rounded-full bg-slate-200" />
-                </div>
+                )}
               </div>
 
               <div className="rounded-[8px] border border-slate-100 bg-white p-6 shadow-sm">

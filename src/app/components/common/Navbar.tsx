@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import type { ReactNode } from "react";
 import {
   Bell,
@@ -9,6 +9,10 @@ import {
   Menu,
   Search,
   UserRound,
+  Check,
+  Play,
+  FileText,
+  Sparkles,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { jwtDecode } from "jwt-decode";
@@ -23,6 +27,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { publicApi } from "../../api/publicApi";
 import { resolveMediaUrl } from "../../utils/media";
+import { toast } from "sonner";
+import { notificationApi } from "../../api/notificationApi";
+import type { NotificationDto } from "../../api/notificationApi";
+import { useSse } from "../../api/sseClient";
 
 interface User {
   unique_name?: string;
@@ -66,12 +74,31 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
   const location = useLocation();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchCourses, setSearchCourses] = useState<SearchCourse[]>([]);
   const [searchTeachers, setSearchTeachers] = useState<SearchTeacher[]>([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await notificationApi.getNotifications(50);
+      setNotifications(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch notifications", err);
+    }
+  }, []);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await notificationApi.getUnreadCount();
+      setUnreadCount(res.data.count || 0);
+    } catch (err) {
+      console.error("Failed to fetch unread count", err);
+    }
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -88,7 +115,6 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
       console.log("User keys:", Object.keys(decoded));
       setUser(decoded);
       setIsLoggedIn(true);
-      setNotifications([]);
     } catch (error) {
       console.error("Token decoding failed", error);
       localStorage.removeItem("token");
@@ -96,6 +122,123 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
       setUser(null);
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchNotifications();
+      fetchUnreadCount();
+    } else {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  }, [isLoggedIn, fetchNotifications, fetchUnreadCount]);
+
+  const getUserRole = useCallback(() => {
+    if (!user) return "";
+    return (
+      user.role ||
+      (user["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] as string) ||
+      "STUDENT"
+    );
+  }, [user]);
+
+  const handleSseNotificationEvent = useCallback((eventName: string, data: any) => {
+    if (eventName === "notification-received") {
+      toast.info(data.title || "Bạn có thông báo mới!", {
+        description: data.message,
+        action: data.relatedId ? {
+          label: "Xem chi tiết",
+          onClick: () => navigate(`/course/${data.relatedId}`)
+        } : undefined
+      });
+      fetchNotifications();
+      fetchUnreadCount();
+    }
+  }, [fetchNotifications, fetchUnreadCount, navigate]);
+
+  const sseChannel = useMemo(() => {
+    if (!isLoggedIn || !user) return null;
+    const role = getUserRole();
+    if (role === "ADMIN") return "admin";
+    if (role === "TEACHER") return "teacher";
+    return "student";
+  }, [isLoggedIn, user, getUserRole]);
+
+  useSse(sseChannel, handleSseNotificationEvent);
+
+  const handleNotificationClick = async (n: NotificationDto) => {
+    if (!n.isRead) {
+      try {
+        await notificationApi.markRead(n.id);
+        setNotifications((prev) =>
+          prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch (err) {
+        console.error("Failed to mark notification as read", err);
+      }
+    }
+
+    if (n.relatedId) {
+      navigate(`/course/${n.relatedId}`);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationApi.markAllRead();
+      setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+      setUnreadCount(0);
+      toast.success("Đã đánh dấu đọc tất cả thông báo");
+    } catch (err) {
+      console.error("Failed to mark all as read", err);
+    }
+  };
+
+  const formatTimeElapsed = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return "Vừa xong";
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString("vi-VN");
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type.toUpperCase()) {
+      case "COURSE":
+        return <BookOpen className="h-4 w-4 text-[#FF6B00]" />;
+      case "ENROLLMENT":
+        return <UserRound className="h-4 w-4 text-emerald-600" />;
+      case "LESSON":
+        return <Play className="h-4 w-4 text-blue-600" />;
+      case "QUIZ":
+        return <FileText className="h-4 w-4 text-purple-600" />;
+      default:
+        return <Bell className="h-4 w-4 text-[#FF6B00]" />;
+    }
+  };
+
+  const getNotificationBg = (type: string) => {
+    switch (type.toUpperCase()) {
+      case "COURSE":
+        return "bg-[#FFF4EC]";
+      case "ENROLLMENT":
+        return "bg-emerald-50";
+      case "LESSON":
+        return "bg-blue-50";
+      case "QUIZ":
+        return "bg-purple-50";
+      default:
+        return "bg-[#FFF4EC]";
+    }
+  };
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -196,7 +339,6 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
     navigate(`/courses?search=${encodeURIComponent(keyword)}`);
   };
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
   const isHomePage = location.pathname === "/";
   const hasSearchTerm = searchTerm.trim().length > 0;
   const hasSearchResults = searchMatches.courses.length > 0 || searchMatches.teachers.length > 0;
@@ -366,27 +508,57 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
                 )}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 overflow-hidden rounded-[24px] border-[#ECEEF2] p-0 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-[#ECEEF2] bg-[#F8F9FB] p-4">
-                <span className="text-sm font-bold text-[#0F172A]">Thông báo</span>
+            <DropdownMenuContent align="end" className="w-96 overflow-hidden rounded-[24px] border-[#ECEEF2] p-0 shadow-2xl bg-white/95 backdrop-blur-xl">
+              <div className="flex items-center justify-between border-b border-[#ECEEF2] bg-[#F8F9FB] px-5 py-4">
+                <span className="text-sm font-black text-[#0F172A]">Thông báo</span>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMarkAllRead();
+                    }}
+                    className="text-[11px] font-bold text-[#FF6B00] hover:text-[#ea460d] transition-colors"
+                  >
+                    Đánh dấu đã đọc tất cả
+                  </button>
+                )}
               </div>
-              <div className="max-h-[400px] overflow-y-auto">
+              <div className="max-h-[420px] overflow-y-auto">
                 {notifications.length > 0 ? (
                   notifications.map((n) => (
-                    <DropdownMenuItem key={n.id} className="cursor-pointer border-b border-[#ECEEF2] p-4 transition-colors last:border-0 focus:bg-[#F8F9FB]">
-                      <div className="flex gap-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF4EC] text-[#FF6B00]">
-                          <Bell className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="mb-1 text-sm font-bold leading-tight text-[#0F172A]">{n.title}</p>
-                          <p className="text-[11px] font-medium uppercase tracking-wider text-[#98A2B3]">{n.time}</p>
-                        </div>
+                    <DropdownMenuItem
+                      key={n.id}
+                      onClick={() => handleNotificationClick(n)}
+                      className={`cursor-pointer border-b border-[#ECEEF2] px-5 py-4 transition-colors last:border-0 focus:bg-[#F8F9FB] flex items-start gap-4 ${
+                        !n.isRead ? "bg-orange-50/20 hover:bg-orange-50/30" : "bg-white"
+                      }`}
+                    >
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${getNotificationBg(n.type)}`}>
+                        {getNotificationIcon(n.type)}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm leading-snug text-[#0F172A] ${!n.isRead ? "font-black" : "font-semibold"}`}>
+                          {n.title}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500 line-clamp-2 font-medium leading-relaxed">
+                          {n.message}
+                        </p>
+                        <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-[#98A2B3]">
+                          {formatTimeElapsed(n.createdAt)}
+                        </p>
+                      </div>
+                      {!n.isRead && (
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-[#FF6B00] mt-1.5 self-start" />
+                      )}
                     </DropdownMenuItem>
                   ))
                 ) : (
-                  <div className="p-6 text-center text-xs font-bold text-[#98A2B3]">Chưa có thông báo.</div>
+                  <div className="py-12 flex flex-col items-center justify-center text-center">
+                    <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center mb-3">
+                      <Bell className="h-6 w-6 text-slate-300" />
+                    </div>
+                    <p className="text-xs font-bold text-[#98A2B3]">Bạn chưa có thông báo nào.</p>
+                  </div>
                 )}
               </div>
             </DropdownMenuContent>

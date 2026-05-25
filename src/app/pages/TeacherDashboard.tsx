@@ -650,7 +650,7 @@ export default function TeacherDashboard() {
         {[
           {
             label: "Học sinh của tôi",
-            value: 191,
+            value: stats?.studentCount || 0,
             icon: Users,
             color: "orange",
           },
@@ -1018,44 +1018,6 @@ export default function TeacherDashboard() {
             </button>
           </div>
 
-          <form
-            onSubmit={handleEnrollStudentToCourse}
-            className="mt-6 rounded-2xl border border-[#FFE1D2] bg-[#FFF7F2] p-4"
-          >
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-              <label className="flex-1">
-                <span className="mb-2 block text-sm font-black text-[#0F172A]">
-                  Thêm học sinh vào khóa học
-                </span>
-                <input
-                  type="email"
-                  required
-                  value={courseStudentEmail}
-                  onChange={(event) =>
-                    setCourseStudentEmail(event.target.value)
-                  }
-                  className="h-12 w-full rounded-xl border border-[#FFD8C7] bg-white px-4 text-sm font-bold text-[#0F172A] outline-none transition focus:border-[#FF5A1F]"
-                  placeholder="student@example.com"
-                />
-              </label>
-              <button
-                disabled={isEnrollingStudent}
-                type="submit"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#FF5A1F] px-6 text-sm font-black text-white shadow-lg shadow-orange-100 transition hover:bg-[#E84A0C] disabled:opacity-60"
-              >
-                {isEnrollingStudent ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <UserPlus className="h-4 w-4" />
-                )}
-                Thêm học sinh
-              </button>
-            </div>
-            <p className="mt-2 text-xs font-semibold text-[#667085]">
-              Học sinh được thêm sẽ thấy khóa học này trên dashboard và truy cập
-              được các bài giảng trong khóa học.
-            </p>
-          </form>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {courseLessons.map((lesson) => (

@@ -123,6 +123,13 @@ export const adminApi = {
   }) => apiClient.put(`/api/admin/courses/update/${id}`, normalizeCoursePayload(data)),
   deleteCourse: (id: number) => apiClient.delete(`/api/admin/courses/delete/${id}`),
   updateCourseOrder: (courseIds: number[]) => apiClient.post("/api/admin/courses/order", courseIds),
+  enrollStudent: (courseId: number | string, email: string) =>
+    apiClient.post(`/api/admin/courses/${courseId}/enroll`, { email }),
+  unenrollStudent: (courseId: number | string, studentId: number | string) =>
+    apiClient.delete(`/api/admin/courses/${courseId}/unenroll/${studentId}`),
+  getEnrollmentRequests: () => apiClient.get("/api/admin/enrollment-requests"),
+  approveEnrollmentRequest: (requestId: number | string) => apiClient.post(`/api/admin/enrollment-requests/${requestId}/approve`),
+  rejectEnrollmentRequest: (requestId: number | string) => apiClient.post(`/api/admin/enrollment-requests/${requestId}/reject`),
 
   // Lessons
   getLessonsByCourse: (courseId: number) => apiClient.get(`/api/admin/lessons/get_by_course/${courseId}`),

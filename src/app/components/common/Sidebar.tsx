@@ -13,7 +13,8 @@ import {
   FileText,
   Users2,
   Info,
-  Sparkles
+  Sparkles,
+  UserPlus
 } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 import { Button } from "../ui/button";
@@ -70,6 +71,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       { id: "admin-users", label: "Người dùng", icon: Users, path: "/admin?section=users" },
       { id: "admin-courses", label: "Khóa học", icon: BookOpen, path: "/admin?section=courses" },
       { id: "admin-news", label: "Tin tức", icon: Newspaper, path: "/admin?section=news" },
+      { id: "admin-requests", label: "Yêu cầu đăng ký", icon: UserPlus, path: "/admin?section=enrollmentRequests" },
     ],
     TEACHER: [
       { id: "teacher-courses", label: "Khóa học", icon: BookOpen, path: "/teacher?section=courses" },

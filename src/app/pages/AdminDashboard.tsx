@@ -43,6 +43,7 @@ import {
 } from "../utils/courseOrderUtils";
 import { toast } from "sonner";
 import { adminApi } from "../api/adminApi";
+import { publicApi } from "../api/publicApi";
 import {
   BarChart,
   Bar,
@@ -70,7 +71,8 @@ type AdminSection =
   | "courses"
   | "news"
   | "courseDetail"
-  | "feedback";
+  | "feedback"
+  | "enrollmentRequests";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -102,6 +104,7 @@ export default function AdminDashboard() {
     | "quizzes"
     | "exams"
     | "feedback"
+    | "students"
   >("overview");
   const [courseSearch, setCourseSearch] = useState("");
   const [courseStatusFilter, setCourseStatusFilter] = useState("all");
@@ -135,6 +138,14 @@ export default function AdminDashboard() {
   const [courseOrderList, setCourseOrderList] = useState<any[]>([]);
   const dragIndexRef = useRef<number | null>(null);
   const [coursePendingDelete, setCoursePendingDelete] = useState<any>(null);
+
+  // Admin Course Student Enrollment States
+  const [isAdminAddStudentOpen, setIsAdminAddStudentOpen] = useState(false);
+  const [adminStudentEmailQuery, setAdminStudentEmailQuery] = useState("");
+  const [selectedAdminStudent, setSelectedAdminStudent] = useState<any>(null);
+  const [isAdminEnrolling, setIsAdminEnrolling] = useState(false);
+  const [showAdminSuggestions, setShowAdminSuggestions] = useState(false);
+  const [enrollmentRequests, setEnrollmentRequests] = useState<any[]>([]);
 
   // Real Database Stats State
   const [courseCompletionData, setCourseCompletionData] = useState<any[]>([]);
@@ -186,6 +197,7 @@ export default function AdminDashboard() {
     fetchRecentActivities();
     fetchCourseCompletion();
     fetchMemberGrowth();
+    fetchEnrollmentRequests();
 
     // Fallback polling mỗi 60s (SSE xử lý phần lớn updates)
     const interval = setInterval(() => {
@@ -193,6 +205,7 @@ export default function AdminDashboard() {
       fetchRecentActivities();
       fetchCourseCompletion();
       fetchMemberGrowth();
+      fetchEnrollmentRequests();
     }, 60000);
 
     return () => clearInterval(interval);
@@ -210,6 +223,16 @@ export default function AdminDashboard() {
         fetchOverviewStats();
         fetchCourseCompletion();
         fetchRecentActivities();
+        break;
+      case "enrollment-requested":
+        fetchEnrollmentRequests();
+        fetchOverviewStats();
+        toast.info("👤 Có yêu cầu đăng ký khóa học mới cần phê duyệt!", { duration: 4000 });
+        break;
+      case "enrollment-approved":
+      case "enrollment-rejected":
+        fetchEnrollmentRequests();
+        fetchOverviewStats();
         break;
     }
   }, []);
@@ -314,6 +337,15 @@ export default function AdminDashboard() {
       setNews(res.data);
     } catch (err) {
       console.error("Failed to fetch news", err);
+    }
+  };
+
+  const fetchEnrollmentRequests = async () => {
+    try {
+      const res = await adminApi.getEnrollmentRequests();
+      setEnrollmentRequests(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch enrollment requests", err);
     }
   };
 
@@ -1363,11 +1395,7 @@ export default function AdminDashboard() {
             </div>
             <h3
               className="text-xl font-bold text-[#0F172A] mb-3 cursor-pointer hover:text-[#FF6B00] transition-colors"
-              onClick={() => {
-                setSelectedCourse(course);
-                fetchLessons(course.id);
-                setActiveSection("courseDetail");
-              }}
+              onClick={() => openCourseDetail(course)}
             >
               {course.title}
             </h3>
@@ -1646,12 +1674,18 @@ export default function AdminDashboard() {
   const openCourseDetail = async (course: any) => {
     setSelectedCourse(course);
     setCourseDetailTab("overview");
+    setActiveSection("courseDetail");
     await Promise.all([
       fetchLessons(course.id),
       fetchCourseMaterials(course.id),
       fetchCourseLearningItems(course.id),
     ]);
-    setActiveSection("courseDetail");
+    try {
+      const res = await publicApi.getCourseById(course.id);
+      setSelectedCourse(res.data);
+    } catch (err) {
+      console.error("Failed to fetch detailed course information", err);
+    }
   };
 
   const renderCoursesV2 = () => {
@@ -2369,17 +2403,10 @@ export default function AdminDashboard() {
         count: lessonGroups.length,
       },
       {
-        id: "materials" as const,
-        label: "Tài liệu",
-        count: courseMaterials.length,
+        id: "students" as const,
+        label: "Học viên",
+        count: selectedCourse?.students?.length || selectedCourse?.studentCount || 0
       },
-      {
-        id: "flashcards" as const,
-        label: "Flashcard",
-        count: flashcardItems.length,
-      },
-      { id: "quizzes" as const, label: "Quiz", count: quizItems.length },
-      { id: "exams" as const, label: "Bài thi", count: examItems.length },
       { id: "feedback" as const, label: "Đánh giá khóa học", count: null },
     ];
 
@@ -2840,12 +2867,6 @@ export default function AdminDashboard() {
                   Quản lý nội dung video, mô tả và PDF nền cho từng bài học.
                 </p>
               </div>
-              <button
-                onClick={() => handleOpenModal("lesson")}
-                className="flex h-11 items-center gap-2 rounded-lg bg-[#FF4D12] px-5 text-sm font-black text-white transition hover:bg-[#E6420C]"
-              >
-                <Plus className="h-4 w-4" /> Thêm bài học
-              </button>
             </div>
             <div className="grid gap-4">
               {lessonGroups.map((lesson, index) => (
@@ -3000,6 +3021,313 @@ export default function AdminDashboard() {
             title="Đánh giá khóa học"
           />
         )}
+        {courseDetailTab === "students" && renderCourseStudentsTab(course)}
+      </div>
+    );
+  };
+
+  const renderCourseStudentsTab = (course: any) => {
+    if (!course) return null;
+
+    // Filter students enrolled in the current course based on search query
+    const courseStudents = course.students || [];
+    const filteredCourseStudents = courseStudents.filter((student: any) => {
+      const q = adminStudentEmailQuery.toLowerCase().trim();
+      return (
+        !q ||
+        student.fullName.toLowerCase().includes(q) ||
+        student.email.toLowerCase().includes(q)
+      );
+    });
+
+    // Filter suggestions for new students from the system users list (exclude already enrolled)
+    const enrolledIds = new Set(courseStudents.map((s: any) => s.id));
+    const allStudents = users.filter((u) => roleToValue(u.role) === 2);
+    
+    // Filter suggestions based on what the admin is typing in the input
+    const suggestionFilter = adminStudentEmailQuery.trim().toLowerCase();
+    const suggestions = allStudents
+      .filter((s) => {
+        if (enrolledIds.has(s.id)) return false;
+        return (
+          s.email.toLowerCase().includes(suggestionFilter) ||
+          s.fullName.toLowerCase().includes(suggestionFilter)
+        );
+      })
+      .slice(0, 8);
+
+    const handleEnrollStudent = async () => {
+      if (!selectedAdminStudent || !course) return;
+      setIsAdminEnrolling(true);
+      try {
+        await adminApi.enrollStudent(course.id, selectedAdminStudent.email);
+        toast.success(`Đã phân học sinh ${selectedAdminStudent.fullName} vào khóa học!`);
+        
+        // Refresh detailed course information
+        const res = await publicApi.getCourseById(course.id);
+        setSelectedCourse(res.data);
+        
+        setIsAdminAddStudentOpen(false);
+        setSelectedAdminStudent(null);
+        setAdminStudentEmailQuery("");
+      } catch (err: any) {
+        toast.error(
+          err.response?.data?.message || "Không thể thêm học sinh vào khóa học.",
+        );
+      } finally {
+        setIsAdminEnrolling(false);
+      }
+    };
+
+    const handleUnenrollStudent = async (studentId: number, studentName: string) => {
+      if (!confirm(`Bạn có chắc chắn muốn gỡ học viên "${studentName}" khỏi khóa học này?`)) {
+        return;
+      }
+      try {
+        await adminApi.unenrollStudent(course.id, studentId);
+        toast.success(`Đã gỡ học viên ${studentName} khỏi khóa học.`);
+        
+        // Refresh detailed course information
+        const res = await publicApi.getCourseById(course.id);
+        setSelectedCourse(res.data);
+      } catch (err: any) {
+        toast.error(
+          err.response?.data?.message || "Không thể gỡ học sinh khỏi khóa học.",
+        );
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <section className="rounded-2xl border border-[#ECEEF2] bg-white p-8 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-[#0F172A]">
+                Danh sách học viên tham gia
+              </h2>
+              <p className="text-sm font-semibold text-[#667085] mt-1">
+                Phân quyền và quản lý danh sách học sinh học khóa học này.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setIsAdminAddStudentOpen(true);
+                setAdminStudentEmailQuery("");
+                setSelectedAdminStudent(null);
+                setShowAdminSuggestions(false);
+              }}
+              className="flex items-center gap-2 px-5 py-3 bg-[#FF6B00] text-white rounded-xl text-xs font-bold hover:bg-[#E65F00] transition-all self-start sm:self-center"
+            >
+              <UserPlus className="w-4.5 h-4.5" /> Phân học sinh mới
+            </button>
+          </div>
+
+          {/* Search bar */}
+          <div className="relative mb-6">
+            <Search className="w-4.5 h-4.5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm học viên theo họ tên hoặc email..."
+              value={isAdminAddStudentOpen ? "" : adminStudentEmailQuery}
+              onChange={(e) => setAdminStudentEmailQuery(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-[#ECEEF2] rounded-xl focus:ring-2 focus:ring-[#FF6B00]/20 focus:border-[#FF6B00] outline-none text-xs font-bold text-[#0F172A] transition-all placeholder:text-slate-400"
+            />
+          </div>
+
+          {filteredCourseStudents.length === 0 ? (
+            <div className="text-center py-16 border border-dashed border-[#ECEEF2] rounded-2xl bg-slate-50/40">
+              <Users className="mx-auto h-10 w-10 text-slate-300 mb-3" />
+              <p className="text-sm font-bold text-[#667085]">
+                {courseStudents.length === 0 
+                  ? "Chưa có học sinh nào đăng ký tham gia khóa học này." 
+                  : "Không tìm thấy học sinh nào khớp với từ khóa tìm kiếm."}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-[#ECEEF2]">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-50 border-b border-[#ECEEF2]">
+                  <tr>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[30%]">
+                      Học viên
+                    </th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[35%]">
+                      Email
+                    </th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[20%]">
+                      Ngày tham gia
+                    </th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[15%] text-right">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#ECEEF2]">
+                  {filteredCourseStudents.map((student: any) => (
+                    <tr key={student.id} className="hover:bg-slate-50/40 transition">
+                      <td className="px-6 py-4 font-bold text-[#0F172A]">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFF4EC] text-xs font-black text-[#FF6B00]">
+                            {student.fullName
+                              ?.split(" ")
+                              ?.map((n: string) => n[0])
+                              ?.join("")
+                              ?.slice(0, 2)
+                              ?.toUpperCase() || "HS"}
+                          </div>
+                          <span>{student.fullName}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-semibold text-[#667085]">
+                        {student.email}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-semibold text-[#667085]">
+                        {student.enrolledAt
+                          ? new Date(student.enrolledAt).toLocaleDateString("vi-VN")
+                          : "Vừa mới đây"}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleUnenrollStudent(student.id, student.fullName)}
+                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                          title="Gỡ học viên khỏi khóa học"
+                        >
+                          <Trash2 className="w-4.5 h-4.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* Enroll Student Dialog/Modal */}
+        {isAdminAddStudentOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-5 bg-[#0F172A]/50 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="w-full max-w-lg bg-white rounded-2xl p-6 border border-[#ECEEF2] shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-[#0F172A]">
+                    Phân học sinh vào khóa học
+                  </h3>
+                  <p className="text-xs font-semibold text-[#667085] mt-1">
+                    Tìm kiếm và đăng ký học viên mới cho khóa học này.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsAdminAddStudentOpen(false)}
+                  className="p-1 text-slate-400 hover:bg-slate-100 rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="relative">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                    Họ tên hoặc Email học sinh
+                  </label>
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Nhập để tìm học sinh..."
+                      value={adminStudentEmailQuery}
+                      onChange={(e) => {
+                        setAdminStudentEmailQuery(e.target.value);
+                        setSelectedAdminStudent(null);
+                        setShowAdminSuggestions(true);
+                      }}
+                      onFocus={() => setShowAdminSuggestions(true)}
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-[#ECEEF2] rounded-xl focus:ring-2 focus:ring-[#FF6B00]/20 focus:border-[#FF6B00] outline-none text-xs font-bold text-[#0F172A] transition-all"
+                    />
+                  </div>
+
+                  {/* Suggestions Popover */}
+                  {showAdminSuggestions && adminStudentEmailQuery.trim().length > 0 && (
+                    <div className="absolute left-0 right-0 z-20 mt-1 max-h-52 overflow-y-auto rounded-xl border border-[#ECEEF2] bg-white shadow-xl divide-y divide-slate-100">
+                      {suggestions.map((student) => (
+                        <button
+                          key={student.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAdminStudent(student);
+                            setAdminStudentEmailQuery(student.email);
+                            setShowAdminSuggestions(false);
+                          }}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition"
+                        >
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FFF4EC] text-xs font-black text-[#FF6B00]">
+                            {student.fullName
+                              ?.split(" ")
+                              ?.map((n: string) => n[0])
+                              ?.join("")
+                              ?.toUpperCase() || "HS"}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-[#0F172A] truncate">
+                              {student.fullName}
+                            </p>
+                            <p className="text-[10px] font-semibold text-[#667085] truncate mt-0.5">
+                              {student.email}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                      {suggestions.length === 0 && (
+                        <div className="px-4 py-4 text-center text-xs font-semibold text-[#667085]">
+                          Không tìm thấy học sinh nào khác để phân quyền.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Student Preview */}
+                {selectedAdminStudent && (
+                  <div className="flex items-center gap-3 p-3 bg-orange-50/50 border border-orange-100 rounded-xl">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FFF4EC] text-xs font-black text-[#FF6B00]">
+                      {selectedAdminStudent.fullName
+                        ?.split(" ")
+                        ?.map((n: string) => n[0])
+                        ?.join("")
+                        ?.toUpperCase() || "HS"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-[#0F172A] truncate">
+                        {selectedAdminStudent.fullName}
+                      </p>
+                      <p className="text-[10px] font-semibold text-[#667085] truncate">
+                        {selectedAdminStudent.email}
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 bg-orange-100 text-[#FF6B00] rounded-full text-[9px] font-bold uppercase tracking-wider">
+                      Đã chọn
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => setIsAdminAddStudentOpen(false)}
+                    className="flex-1 py-2.5 border border-[#ECEEF2] hover:bg-slate-50 text-xs font-bold text-[#0F172A] rounded-xl transition"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    disabled={!selectedAdminStudent || isAdminEnrolling}
+                    onClick={handleEnrollStudent}
+                    className="flex-1 py-2.5 bg-[#FF6B00] hover:bg-[#E65F00] text-white text-xs font-bold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                  >
+                    {isAdminEnrolling ? "Đang xử lý..." : "Xác nhận thêm"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -3095,6 +3423,125 @@ export default function AdminDashboard() {
     </div>
   );
 
+  const renderEnrollmentRequests = () => {
+    const handleApprove = async (requestId: number) => {
+      try {
+        await adminApi.approveEnrollmentRequest(requestId);
+        toast.success("Đã phê duyệt yêu cầu đăng ký học viên thành công!");
+        fetchEnrollmentRequests();
+        fetchOverviewStats();
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Không thể phê duyệt yêu cầu.");
+      }
+    };
+
+    const handleReject = async (requestId: number) => {
+      try {
+        await adminApi.rejectEnrollmentRequest(requestId);
+        toast.success("Đã từ chối yêu cầu đăng ký.");
+        fetchEnrollmentRequests();
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Không thể từ chối yêu cầu.");
+      }
+    };
+
+    return (
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-white rounded-[28px] shadow-sm border border-[#ECEEF2] overflow-hidden">
+          <div className="p-8 border-b border-[#ECEEF2] flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight">
+                Yêu cầu đăng ký khóa học
+              </h2>
+              <p className="mt-2 text-sm font-semibold text-[#667085]">
+                Phê duyệt học viên đăng ký tham gia các khóa học trong hệ thống.
+              </p>
+            </div>
+            <button
+              onClick={fetchEnrollmentRequests}
+              className="flex h-11 items-center gap-2 px-4 rounded-xl border border-[#D8DFEA] bg-white text-sm font-bold text-[#0F172A] hover:bg-[#F8FAFC] transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" /> Làm mới
+            </button>
+          </div>
+
+          <div className="p-8">
+            {!enrollmentRequests.length ? (
+              <div className="rounded-[22px] border border-dashed border-[#D8DFEA] bg-[#FBFCFE] p-16 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#FFF4EC] text-[#FF6B00]">
+                  <UserPlus className="h-8 w-8" />
+                </div>
+                <h3 className="mt-4 text-lg font-black text-[#0F172A]">Không có yêu cầu nào</h3>
+                <p className="mt-2 text-sm font-semibold text-[#667085] max-w-sm mx-auto">
+                  Tất cả các yêu cầu đăng ký khóa học từ học viên mới đã được xử lý xong.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {enrollmentRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="rounded-[22px] border border-[#ECEEF2] bg-white p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF4EC] text-sm font-black text-[#FF6B00]">
+                          {getInitials(req.studentName)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-base font-black text-[#0F172A] truncate">
+                            {req.studentName}
+                          </h4>
+                          <p className="text-xs font-semibold text-[#667085] truncate">
+                            {req.studentEmail}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 border-t border-[#EEF2F6] pt-4 space-y-2">
+                        <div>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-[#98A2B3]">
+                            Khóa học yêu cầu
+                          </span>
+                          <p className="text-sm font-bold text-[#0F172A] leading-relaxed line-clamp-2">
+                            {req.courseTitle}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-[#98A2B3]">
+                            Ngày gửi yêu cầu
+                          </span>
+                          <p className="text-xs font-bold text-[#3C4A5F]">
+                            {formatDate(req.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 grid grid-cols-2 gap-3 border-t border-[#EEF2F6] pt-4">
+                      <button
+                        onClick={() => handleReject(req.id)}
+                        className="flex h-11 items-center justify-center rounded-xl border border-red-200 bg-white text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        Từ chối
+                      </button>
+                      <button
+                        onClick={() => handleApprove(req.id)}
+                        className="flex h-11 items-center justify-center rounded-xl bg-[#22C55E] text-sm font-bold text-white shadow-lg shadow-green-500/10 hover:bg-[#16A34A] transition-colors"
+                      >
+                        Phê duyệt
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const stripHtml = (html: string) => {
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
@@ -3107,6 +3554,7 @@ export default function AdminDashboard() {
     { id: "courses", label: "Khóa học", icon: BookOpen },
     { id: "news", label: "Tin tức", icon: Newspaper },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
+    { id: "enrollmentRequests", label: "Yêu cầu đăng ký", icon: UserPlus },
   ];
 
   const activeLabel =
@@ -3124,6 +3572,7 @@ export default function AdminDashboard() {
         {activeSection === "feedback" && <FeedbackPage />}
         {activeSection === "courseDetail" &&
           renderCourseDetailV2(selectedCourse)}
+        {activeSection === "enrollmentRequests" && renderEnrollmentRequests()}
       </div>
 
       {detailModal && (
