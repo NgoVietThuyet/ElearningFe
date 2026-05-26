@@ -25,6 +25,7 @@ import { studentApi } from "../api/studentApi";
 import { jwtDecode } from "jwt-decode";
 import { toast } from "sonner";
 import { resolveMediaUrl } from "../utils/media";
+import TeacherProfileModal from "../components/common/TeacherProfileModal";
 
 interface Course {
   id: number;
@@ -46,6 +47,12 @@ interface Teacher {
   avatarUrl?: string | null;
   studentCount: number;
   lessonCount: number;
+  shortBio?: string | null;
+  teachingExperienceYears?: number;
+  phoneNumber?: string | null;
+  address?: string | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
 }
 
 interface NewsItem {
@@ -198,6 +205,7 @@ export default function Home() {
     new Set(),
   );
   const [feedbackIndex, setFeedbackIndex] = useState(0);
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -673,14 +681,15 @@ export default function Home() {
                 {featuredTeachers.map((teacher) => (
                   <div
                     key={teacher.id}
-                    className="overflow-hidden rounded-[8px] border border-slate-100 bg-white text-center shadow-sm"
+                    onClick={() => setSelectedTeacher(teacher)}
+                    className="group cursor-pointer overflow-hidden rounded-[8px] border border-slate-100 bg-white text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
                   >
                     <TeacherAvatar
                       teacher={teacher}
-                      className="h-44 w-full bg-slate-50"
+                      className="h-44 w-full bg-slate-50 transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="p-4">
-                      <h3 className="text-base font-black">
+                      <h3 className="text-base font-black transition-colors duration-300 group-hover:text-[#ff4f12]">
                         {teacher.fullName}
                       </h3>
                       <p className="mt-1 line-clamp-1 text-sm font-semibold text-slate-500">
@@ -826,7 +835,7 @@ export default function Home() {
           ))}
         </section>
 
-        <footer className="mt-5 rounded-[8px] border border-slate-100 bg-white p-6 shadow-sm">
+        <footer className="mt-5 rounded-[24px] border border-[#FFE4CC] bg-gradient-to-b from-[#FFFDFB] to-[#FFF5EC] p-8 shadow-sm">
           <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr_0.8fr_1fr]">
             <div>
               <Link
@@ -876,12 +885,19 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="mt-6 flex flex-col justify-between gap-2 border-t border-slate-100 pt-4 text-xs font-semibold text-slate-400 md:flex-row">
+          <div className="mt-6 flex flex-col justify-between gap-2 border-t border-[#FFE4CC]/60 pt-4 text-xs font-semibold text-slate-400 md:flex-row">
             <p>© 2026 GenZBio. Tất cả quyền được bảo lưu.</p>
             <p>Phiên bản 1.0.0</p>
           </div>
         </footer>
       </div>
+
+      {/* Teacher Profile Popup Modal */}
+      <TeacherProfileModal
+        isOpen={!!selectedTeacher}
+        onClose={() => setSelectedTeacher(null)}
+        teacher={selectedTeacher}
+      />
     </main>
   );
 }

@@ -38,7 +38,7 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="w-full bg-white border-t border-slate-100">
+    <footer className="w-full bg-gradient-to-b from-[#FFFDFB] to-[#FFF5EC] border-t border-[#FFE4CC]">
 
 
       {/* Main links */}
@@ -98,7 +98,7 @@ export default function Footer() {
         </div>
 
         {/* Contact bar */}
-        <div className="mt-16 grid gap-6 rounded-2xl border border-slate-100 bg-slate-50 px-8 py-6 md:grid-cols-3">
+        <div className="mt-16 grid gap-6 rounded-2xl border border-[#FFE4CC]/60 bg-white/85 backdrop-blur-sm px-8 py-6 md:grid-cols-3 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
               <Mail className="h-5 w-5" />
@@ -142,7 +142,7 @@ export default function Footer() {
       </div>
 
       {/* Bottom bar */}
-      <div className="border-t border-slate-100">
+      <div className="border-t border-[#FFE4CC]/60">
         <div className="mx-auto flex max-w-[1500px] flex-col items-center justify-between gap-4 px-6 py-6 text-sm font-medium text-slate-400 md:flex-row">
           <p>© 2026 GenZBio. Tất cả quyền được bảo lưu.</p>
           <p>Phiên bản 1.0.0 · Made with ❤️ for education</p>

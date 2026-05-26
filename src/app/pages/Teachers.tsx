@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 import { Briefcase, Facebook, GraduationCap, Linkedin, Loader2, Mail, Search, Star, Users } from "lucide-react";
 import { publicApi } from "../api/publicApi";
 import { resolveMediaUrl } from "../utils/media";
+import TeacherProfileModal from "../components/common/TeacherProfileModal";
 
 interface Teacher {
   id: number;
@@ -11,6 +12,12 @@ interface Teacher {
   avatarUrl?: string | null;
   studentCount: number;
   lessonCount: number;
+  shortBio?: string | null;
+  teachingExperienceYears?: number;
+  phoneNumber?: string | null;
+  address?: string | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
 }
 
 interface FeedbackItem {
@@ -28,6 +35,7 @@ export default function Teachers() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
 
@@ -124,11 +132,15 @@ export default function Teachers() {
           <>
             <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-4">
               {filteredTeachers.map((teacher) => (
-                <article key={teacher.id} className="rounded-2xl border border-slate-100 bg-white p-7 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-                  <div className="mx-auto flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-orange-50 text-3xl font-black text-orange-600">
+                <article 
+                  key={teacher.id} 
+                  onClick={() => setSelectedTeacher(teacher)}
+                  className="cursor-pointer rounded-2xl border border-slate-100 bg-white p-7 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-xl group"
+                >
+                  <div className="mx-auto flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-orange-50 text-3xl font-black text-orange-600 border-2 border-transparent group-hover:border-[#FF6B00] transition duration-300">
                     {teacher.avatarUrl ? <img src={resolveMediaUrl(teacher.avatarUrl)} alt={teacher.fullName} className="h-full w-full object-cover" /> : getInitials(teacher.fullName)}
                   </div>
-                  <h2 className="mt-6 text-lg font-black text-[#101828]">{teacher.fullName}</h2>
+                  <h2 className="mt-6 text-lg font-black text-[#101828] group-hover:text-[#ff4f12] transition duration-300">{teacher.fullName}</h2>
                   <p className="mt-1 text-sm font-bold text-slate-500">Giảng viên GenZBio</p>
                   <div className="mt-4 flex items-center justify-center gap-1 text-xs font-bold text-slate-500">
                     <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -138,10 +150,10 @@ export default function Teachers() {
                   <p className="mx-auto mt-4 min-h-[48px] max-w-[230px] text-xs font-medium leading-6 text-slate-500">
                     {teacher.lessonCount} bài giảng, đồng hành cùng {teacher.studentCount} học viên.
                   </p>
-                  <div className="mt-6 flex justify-center gap-5 text-[#101828]">
-                    <Facebook className="h-4 w-4" />
-                    <Mail className="h-4 w-4" />
-                    <Linkedin className="h-4 w-4" />
+                  <div className="mt-6 flex justify-center gap-5 text-slate-400 group-hover:text-[#101828] transition duration-300">
+                    <Facebook className="h-4 w-4 hover:text-[#FF6B00]" />
+                    <Mail className="h-4 w-4 hover:text-[#FF6B00]" />
+                    <Linkedin className="h-4 w-4 hover:text-[#FF6B00]" />
                   </div>
                 </article>
               ))}
@@ -161,6 +173,13 @@ export default function Teachers() {
           </div>
         )}
       </div>
+
+      {/* Teacher Profile Popup Modal */}
+      <TeacherProfileModal 
+        isOpen={!!selectedTeacher} 
+        onClose={() => setSelectedTeacher(null)} 
+        teacher={selectedTeacher} 
+      />
     </div>
   );
 }

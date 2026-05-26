@@ -594,6 +594,12 @@ export default function AdminDashboard() {
             dateOfBirth: userPayload.dateOfBirth,
             avatarFile: userPayload.avatarFile,
             avatarUrl: userPayload.avatarUrl,
+            gender: userPayload.gender || null,
+            phoneNumber: userPayload.phoneNumber || null,
+            address: userPayload.address || null,
+            teachingExperienceYears: userPayload.role === 1 ? Number(userPayload.teachingExperienceYears || 0) : 0,
+            shortBio: userPayload.shortBio || null,
+            password: userPayload.password || null,
           });
         } else {
           await adminApi.createUser(userPayload);
@@ -1292,9 +1298,6 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-4 py-5 text-right">
                       <div className="flex justify-end gap-0.5">
-                        <button className="p-1.5 text-[#98A2B3] hover:text-[#0F172A] hover:bg-slate-50 rounded-lg transition-all">
-                          <Eye className="w-4 h-4" />
-                        </button>
                         <button
                           onClick={() => handleOpenModal("user", user)}
                           className="p-1.5 text-[#98A2B3] hover:text-[#0F172A] hover:bg-slate-50 rounded-lg transition-all"
@@ -4955,23 +4958,24 @@ export default function AdminDashboard() {
                       />
                     </div>
                   )}
-                  {!editItem && (
-                    <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
-                        Mật khẩu
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        value={formData.password || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, password: e.target.value })
-                        }
-                        className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 focus:ring-4 focus:ring-[#FF6B00]/5 outline-none font-bold text-[#0F172A] transition-all placeholder:text-[#ADB5BD] placeholder:font-medium"
-                        placeholder="••••••••"
-                      />
-                    </div>
-                  )}
+                  {/* Mật khẩu */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
+                      {editItem ? "Mật khẩu mới (Để trống nếu không đổi)" : "Mật khẩu"}
+                    </label>
+                    <input
+                      type="password"
+                      required={!editItem}
+                      value={formData.password || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 focus:ring-4 focus:ring-[#FF6B00]/5 outline-none font-bold text-[#0F172A] transition-all placeholder:text-[#ADB5BD] placeholder:font-medium"
+                      placeholder={editItem ? "Nhập mật khẩu mới nếu muốn đổi..." : "••••••••"}
+                    />
+                  </div>
+
+                  {/* Vai trò */}
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
                       Vai trò
@@ -4979,7 +4983,7 @@ export default function AdminDashboard() {
                     <select
                       value={formData.role}
                       onChange={(e) =>
-                        setFormData({ ...formData, role: e.target.value })
+                        setFormData({ ...formData, role: Number(e.target.value) })
                       }
                       className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg outline-none font-bold text-[#0F172A] focus:bg-white focus:border-[#FF6B00]/20 transition-all cursor-pointer"
                     >
@@ -4988,6 +4992,8 @@ export default function AdminDashboard() {
                       <option value={2}>Học sinh</option>
                     </select>
                   </div>
+
+                  {/* Ngày sinh */}
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
                       Ngày sinh
@@ -5002,6 +5008,91 @@ export default function AdminDashboard() {
                         })
                       }
                       className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg outline-none font-bold text-[#0F172A] focus:bg-white focus:border-[#FF6B00]/20 transition-all"
+                    />
+                  </div>
+
+                  {/* Giới tính */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
+                      Giới tính
+                    </label>
+                    <select
+                      value={formData.gender || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, gender: e.target.value })
+                      }
+                      className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg outline-none font-bold text-[#0F172A] focus:bg-white focus:border-[#FF6B00]/20 transition-all cursor-pointer"
+                    >
+                      <option value="">-- Chọn giới tính --</option>
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
+                      <option value="Khác">Khác</option>
+                    </select>
+                  </div>
+
+                  {/* Số điện thoại */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
+                      Số điện thoại
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.phoneNumber || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phoneNumber: e.target.value })
+                      }
+                      className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 outline-none font-bold text-[#0F172A] transition-all placeholder:text-[#ADB5BD]"
+                      placeholder="VD: 037..."
+                    />
+                  </div>
+
+                  {/* Địa chỉ */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
+                      Địa chỉ liên hệ
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.address || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                      className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 outline-none font-bold text-[#0F172A] transition-all placeholder:text-[#ADB5BD]"
+                      placeholder="VD: Cầu Giấy, Hà Nội..."
+                    />
+                  </div>
+
+                  {/* Số năm kinh nghiệm (chỉ hiện nếu là Giáo viên) */}
+                  {Number(formData.role) === 1 && (
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
+                        Số năm kinh nghiệm
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={formData.teachingExperienceYears ?? 0}
+                        onChange={(e) =>
+                          setFormData({ ...formData, teachingExperienceYears: parseInt(e.target.value) || 0 })
+                        }
+                        className="w-full h-11 px-4 bg-[#F8F9FB] border border-transparent rounded-lg focus:bg-white focus:border-[#FF6B00]/20 outline-none font-bold text-[#0F172A] transition-all"
+                      />
+                    </div>
+                  )}
+
+                  {/* Giới thiệu ngắn */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-[11px] font-bold text-[#667085] uppercase tracking-wider">
+                      Giới thiệu ngắn
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={formData.shortBio || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, shortBio: e.target.value })
+                      }
+                      className="w-full rounded-xl border border-transparent bg-[#F8F9FB] p-4 text-sm font-bold text-[#0F172A] outline-none transition-all focus:border-[#FF6B00]/30 focus:bg-white focus:ring-4 focus:ring-[#FF6B00]/5 resize-none"
+                      placeholder="VD: Giảng viên chuyên ngành Sinh học..."
                     />
                   </div>
                 </div>

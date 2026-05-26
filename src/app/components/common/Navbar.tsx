@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { notificationApi } from "../../api/notificationApi";
 import type { NotificationDto } from "../../api/notificationApi";
 import { useSse } from "../../api/sseClient";
+import UserProfileModal from "./UserProfileModal";
 
 interface User {
   unique_name?: string;
@@ -81,6 +82,20 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
   const [searchCourses, setSearchCourses] = useState<SearchCourse[]>([]);
   const [searchTeachers, setSearchTeachers] = useState<SearchTeacher[]>([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const handleProfileUpdated = (updatedUser: any) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        name: updatedUser.fullName,
+        unique_name: updatedUser.fullName,
+        avatarUrl: updatedUser.avatarUrl,
+        AvatarUrl: updatedUser.avatarUrl,
+      };
+    });
+  };
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -580,11 +595,17 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
                 <ChevronDown className="h-4 w-4 text-[#98A2B3] transition-all group-hover:text-[#0F172A]" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-[20px] border-[#ECEEF2] bg-white p-2 shadow-2xl">
+             <DropdownMenuContent align="end" className="w-56 rounded-[20px] border-[#ECEEF2] bg-white p-2 shadow-2xl">
               <DropdownMenuLabel className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#98A2B3]">Tài khoản</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-[#ECEEF2]" />
               <DropdownMenuItem
-                className="flex cursor-pointer items-center gap-3 rounded-[14px] px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50"
+                className="flex cursor-pointer items-center gap-3 rounded-[14px] px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                onClick={() => setIsProfileOpen(true)}
+              >
+                <UserRound className="h-5 w-5 text-[#FF6B00]" /> Giới thiệu
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex cursor-pointer items-center gap-3 rounded-[14px] px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 mt-1"
                 onClick={handleLogout}
               >
                 <LogOut className="h-5 w-5" /> Đăng xuất
@@ -593,6 +614,13 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* User Profile Edit & View Popup Modal */}
+      <UserProfileModal 
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        onProfileUpdated={handleProfileUpdated}
+      />
     </nav>
   );
 }
